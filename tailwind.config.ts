@@ -47,16 +47,22 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        sidebar: {
-          DEFAULT: "hsl(var(--sidebar-background))",
-          foreground: "hsl(var(--sidebar-foreground))",
-          primary: "hsl(var(--sidebar-primary))",
-          "primary-foreground": "hsl(var(--sidebar-primary-foreground))",
-          accent: "hsl(var(--sidebar-accent))",
-          "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
-          border: "hsl(var(--sidebar-border))",
-          ring: "hsl(var(--sidebar-ring))",
+        risk: {
+          safe: "hsl(var(--risk-safe))",
+          "safe-light": "hsl(var(--risk-safe-light))",
+          warning: "hsl(var(--risk-warning))",
+          "warning-light": "hsl(var(--risk-warning-light))",
+          danger: "hsl(var(--risk-danger))",
+          "danger-light": "hsl(var(--risk-danger-light))",
         },
+        map: {
+          panel: "hsl(var(--map-panel))",
+          overlay: "hsl(var(--map-overlay))",
+          control: "hsl(var(--map-control))",
+        },
+      },
+      transitionProperty: {
+        smooth: "var(--transition-smooth)",
       },
       borderRadius: {
         lg: "var(--radius)",

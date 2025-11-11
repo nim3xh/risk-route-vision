@@ -1,0 +1,117 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [80.52, 7.31]
+      },
+      "properties": {
+        "segment_id": "seg_001",
+        "risk_0_100": 75,
+        "hour": 8,
+        "vehicle": "Car",
+        "top_cause": "Sharp curve with poor visibility"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [80.525, 7.315]
+      },
+      "properties": {
+        "segment_id": "seg_002",
+        "risk_0_100": 45,
+        "hour": 8,
+        "vehicle": "Car",
+        "top_cause": "Moderate traffic intersection"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [80.53, 7.32]
+      },
+      "properties": {
+        "segment_id": "seg_003",
+        "risk_0_100": 82,
+        "hour": 8,
+        "vehicle": "Motor Cycle",
+        "top_cause": "Steep descent with gravel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [80.535, 7.325]
+      },
+      "properties": {
+        "segment_id": "seg_004",
+        "risk_0_100": 28,
+        "hour": 8,
+        "vehicle": "Car",
+        "top_cause": "Well-maintained straight road"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [80.54, 7.33]
+      },
+      "properties": {
+        "segment_id": "seg_005",
+        "risk_0_100": 62,
+        "hour": 8,
+        "vehicle": "Bus",
+        "top_cause": "Narrow bridge with heavy traffic"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [80.545, 7.335]
+      },
+      "properties": {
+        "segment_id": "seg_006",
+        "risk_0_100": 91,
+        "hour": 17,
+        "vehicle": "Three Wheeler",
+        "top_cause": "Blind corner during rush hour"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [80.55, 7.34]
+      },
+      "properties": {
+        "segment_id": "seg_007",
+        "risk_0_100": 35,
+        "hour": 14,
+        "vehicle": "Car",
+        "top_cause": "Minor intersection with good visibility"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [80.555, 7.305]
+      },
+      "properties": {
+        "segment_id": "seg_008",
+        "risk_0_100": 78,
+        "hour": 18,
+        "vehicle": "Motor Cycle",
+        "top_cause": "Wet road surface after rain"
+      }
+    }
+  ]
+}
