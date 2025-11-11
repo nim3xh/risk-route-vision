@@ -1,6 +1,5 @@
 export const config = {
   apiBase: import.meta.env.VITE_API_BASE || "",
-  googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
   timezone: import.meta.env.VITE_TIMEZONE || "Asia/Colombo",
   useMockApi: import.meta.env.VITE_USE_MOCK_API === "true" || !import.meta.env.VITE_API_BASE,
   

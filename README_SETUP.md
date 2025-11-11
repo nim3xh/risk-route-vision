@@ -6,7 +6,7 @@ DriverAlert is a vehicle-specific accident risk monitoring system for the Giniga
 ## Features Implemented
 
 ### ✅ Daily Risk Overview (`/`)
-- Interactive Google Maps showing risky road segments
+- Interactive map (MapLibre GL) showing risky road segments
 - Hour slider (0-23) to view risk at different times
 - Vehicle type selector (Car, Bus, Motorcycle, Three Wheeler)
 - Color-coded risk visualization:
@@ -35,12 +35,9 @@ DriverAlert is a vehicle-specific accident risk monitoring system for the Giniga
 
 ### 1. Environment Setup
 
-Create a `.env` file in the project root:
+Create a `.env` file in the project root (optional):
 
 ```bash
-# Required: Get your Google Maps API key from https://console.cloud.google.com
-VITE_GOOGLE_MAPS_API_KEY=your_actual_api_key_here
-
 # Optional: Backend API (leave empty to use mock data)
 VITE_API_BASE=
 
@@ -51,20 +48,7 @@ VITE_TIMEZONE=Asia/Colombo
 VITE_USE_MOCK_API=true
 ```
 
-### 2. Get Google Maps API Key
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Create a new project or select existing
-3. Enable these APIs:
-   - Maps JavaScript API
-   - Places API (optional, for search)
-4. Go to Credentials → Create Credentials → API Key
-5. (Recommended) Restrict the key:
-   - Application restrictions: HTTP referrers
-   - API restrictions: Maps JavaScript API
-6. Copy the key to your `.env` file
-
-### 3. Install & Run
+### 2. Install & Run
 
 ```bash
 npm install
@@ -73,12 +57,14 @@ npm run dev
 
 Visit `http://localhost:8080`
 
+**No API keys needed!** The app uses MapLibre GL with open-source map tiles.
+
 ## Architecture
 
 ### Technology Stack
 - **Frontend**: React 18 + TypeScript + Vite
 - **UI**: Tailwind CSS + shadcn/ui components
-- **Maps**: Google Maps JavaScript API
+- **Maps**: MapLibre GL (open-source, no API key required)
 - **State**: Zustand (persistent localStorage)
 - **HTTP**: Axios (for future backend)
 - **Date/Time**: Day.js with timezone support (Asia/Colombo)
@@ -253,10 +239,9 @@ Edit `src/fixtures/segments_today.json` - add GeoJSON features.
 ## Troubleshooting
 
 ### Map not loading
-- Check if `VITE_GOOGLE_MAPS_API_KEY` is set in `.env`
-- Verify API key has Maps JavaScript API enabled
 - Check browser console for errors
-- Ensure billing is enabled on Google Cloud project
+- Verify internet connection (map tiles load from CDN)
+- Try a different map style if needed
 
 ### "Mock mode" won't disable
 - Verify `VITE_API_BASE` is set in `.env`
@@ -286,7 +271,6 @@ For issues or questions:
 1. Check browser console for errors
 2. Verify `.env` configuration
 3. Test with mock mode first
-4. Check Google Maps API quotas
 
 ---
 

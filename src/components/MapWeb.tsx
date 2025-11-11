@@ -1,9 +1,9 @@
-import { useEffect, useState, useCallback } from "react";
-import { GoogleMap, useLoadScript, Marker, Circle } from "@react-google-maps/api";
-import { config } from "@/lib/config";
+import { useMemo } from "react";
+import Map, { Layer, Source, MapLayerMouseEvent } from "react-map-gl/maplibre";
+import type { ViewState } from "react-map-gl/maplibre";
 import { SegmentFeature } from "@/types";
 import { riskToColor } from "@/lib/utils/colors";
-import { Skeleton } from "@/components/ui/skeleton";
+import "maplibre-gl/dist/maplibre-gl.css";
 
 interface MapWebProps {
   center: { lat: number; lng: number };
@@ -12,103 +12,65 @@ interface MapWebProps {
   onCenterChange?: (center: { lat: number; lng: number }) => void;
 }
 
-const mapContainerStyle = {
-  width: "100%",
-  height: "100%",
-};
-
-const defaultMapOptions = {
-  disableDefaultUI: false,
-  zoomControl: true,
-  mapTypeControl: false,
-  streetViewControl: false,
-  fullscreenControl: true,
-};
-
 export function MapWeb({ center, segments, onSegmentClick, onCenterChange }: MapWebProps) {
-  const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: config.googleMapsApiKey,
-  });
+  const geojsonData = useMemo(() => {
+    return {
+      type: "FeatureCollection" as const,
+      features: segments.map((segment) => ({
+        type: "Feature" as const,
+        geometry: segment.geometry as any,
+        properties: {
+          ...segment.properties,
+          color: riskToColor(segment.properties.risk_0_100),
+        },
+      })),
+    };
+  }, [segments]);
 
-  const [map, setMap] = useState<google.maps.Map | null>(null);
-
-  const onLoad = useCallback((map: google.maps.Map) => {
-    setMap(map);
-  }, []);
-
-  const onUnmount = useCallback(() => {
-    setMap(null);
-  }, []);
-
-  useEffect(() => {
-    if (map && center) {
-      map.panTo(center);
+  const handleClick = (event: MapLayerMouseEvent) => {
+    const feature = event.features?.[0];
+    if (feature && onSegmentClick) {
+      const segment = segments.find(
+        (s) => s.properties.segment_id === feature.properties.segment_id
+      );
+      if (segment) {
+        onSegmentClick(segment);
+      }
     }
-  }, [map, center]);
-
-  if (loadError) {
-    return (
-      <div className="flex h-full items-center justify-center bg-muted">
-        <div className="text-center">
-          <p className="text-sm text-destructive">Error loading maps</p>
-          <p className="text-xs text-muted-foreground">
-            {loadError.message}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isLoaded) {
-    return (
-      <div className="h-full w-full">
-        <Skeleton className="h-full w-full" />
-      </div>
-    );
-  }
+  };
 
   return (
-    <GoogleMap
-      mapContainerStyle={mapContainerStyle}
-      center={center}
-      zoom={13}
-      options={defaultMapOptions}
-      onLoad={onLoad}
-      onUnmount={onUnmount}
-      onCenterChanged={() => {
-        if (map && onCenterChange) {
-          const newCenter = map.getCenter();
-          if (newCenter) {
-            onCenterChange({
-              lat: newCenter.lat(),
-              lng: newCenter.lng(),
-            });
-          }
+    <Map
+      initialViewState={{
+        longitude: center.lng,
+        latitude: center.lat,
+        zoom: 13,
+      }}
+      style={{ width: "100%", height: "100%" }}
+      mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
+      onMove={(evt) => {
+        if (onCenterChange) {
+          const viewState = evt.viewState as ViewState & { longitude: number; latitude: number };
+          onCenterChange({ lat: viewState.latitude, lng: viewState.longitude });
         }
       }}
+      onClick={handleClick}
+      interactiveLayerIds={["segments-circles"]}
     >
-      {segments.map((segment) => {
-        const coords = segment.geometry.coordinates as number[];
-        const position = { lat: coords[1], lng: coords[0] };
-        const color = riskToColor(segment.properties.risk_0_100);
-
-        return (
-          <Circle
-            key={segment.properties.segment_id}
-            center={position}
-            radius={150}
-            options={{
-              fillColor: color,
-              fillOpacity: 0.4,
-              strokeColor: color,
-              strokeOpacity: 0.8,
-              strokeWeight: 2,
-              clickable: true,
-            }}
-            onClick={() => onSegmentClick?.(segment)}
-          />
-        );
-      })}
-    </GoogleMap>
+      <Source id="segments" type="geojson" data={geojsonData as any}>
+        <Layer
+          id="segments-circles"
+          type="circle"
+          paint={{
+            "circle-radius": 50,
+            "circle-color": ["get", "color"],
+            "circle-opacity": 0.4,
+            "circle-stroke-color": ["get", "color"],
+            "circle-stroke-width": 2,
+            "circle-stroke-opacity": 0.8,
+          }}
+        />
+      </Source>
+    </Map>
   );
 }
