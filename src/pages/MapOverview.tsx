@@ -1,7 +1,8 @@
 import { useEffect } from "react";
-import { MapWeb } from "@/components/MapWeb";
+import { MapWebNative as MapWeb } from "@/components/MapWebNative";
 import { HourSlider } from "@/components/HourSlider";
 import { VehicleSelect } from "@/components/VehicleSelect";
+import { MapStyleSelector } from "@/components/MapStyleSelector";
 import { Legend } from "@/components/Legend";
 import { SegmentInfoCard } from "@/components/SegmentInfoCard";
 import { TopSpotsPanel } from "@/components/TopSpotsPanel";
@@ -14,7 +15,7 @@ import { MapPin, Clock, Database } from "lucide-react";
 import { toast } from "sonner";
 
 export default function MapOverview() {
-  const { hour, vehicle, mockMode, mapCenter, setHour, setVehicle, setMockMode, setMapCenter, resetToNow } = useUiStore();
+  const { hour, vehicle, mockMode, mapCenter, mapStyle, setHour, setVehicle, setMockMode, setMapCenter, setMapStyle, resetToNow } = useUiStore();
   const {
     segmentsToday,
     selectedSegment,
@@ -29,9 +30,11 @@ export default function MapOverview() {
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hour, vehicle, mockMode]);
 
   const loadData = async () => {
+    console.log("🔄 Loading data... hour:", hour, "vehicle:", vehicle, "mockMode:", mockMode);
     setLoading(true);
     setError(null);
     try {
@@ -42,10 +45,13 @@ export default function MapOverview() {
         riskApi.getTopSpots(vehicle, 10),
       ]);
 
+      console.log("✅ Data loaded! Segments:", segments.features.length, "Spots:", spots.length);
+      console.log("📦 First segment:", segments.features[0]);
       setSegmentsToday(segments.features);
       setTopSpots(spots);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to load data";
+      console.error("❌ Failed to load data:", message, err);
       setError(message);
       toast.error(message);
     } finally {
@@ -85,6 +91,7 @@ export default function MapOverview() {
         {/* Left Panel - Controls */}
         <aside className="w-80 space-y-4 overflow-y-auto border-r bg-background p-4">
           <VehicleSelect value={vehicle} onChange={setVehicle} />
+          <MapStyleSelector value={mapStyle} onChange={setMapStyle} />
           <HourSlider value={hour} onChange={setHour} />
           
           <div className="flex gap-2">

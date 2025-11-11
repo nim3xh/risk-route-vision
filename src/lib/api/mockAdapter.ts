@@ -37,6 +37,8 @@ export async function mockScore(req: ScoreRequest): Promise<ScoreResponse> {
     "Bus": 0.85,
     "Motor Cycle": 1.3,
     "Three Wheeler": 1.15,
+    "Van": 0.95,
+    "Lorry": 0.90,
   };
   
   const vehicleRisk = baseRisk * vehicleMultipliers[req.vehicle];
@@ -82,6 +84,9 @@ export async function mockGetSegmentsToday(
 ): Promise<SegmentsTodayResponse> {
   const data = segmentsTodayData as SegmentsTodayResponse;
   
+  console.log("📂 mockGetSegmentsToday called with:", { bbox, hour, vehicle });
+  console.log("📊 Total segments in fixtures:", data.features.length);
+  
   let filtered = data.features;
   
   // Filter by bbox
@@ -91,21 +96,27 @@ export async function mockGetSegmentsToday(
       const [lon, lat] = coords;
       return isPointInBbox(lat, lon, bbox);
     });
+    console.log("📍 After bbox filter:", filtered.length);
   }
   
-  // Filter by hour (within ±2 hours)
-  if (hour !== undefined) {
-    filtered = filtered.filter((f) => {
-      const diff = Math.abs(f.properties.hour - hour);
-      return diff <= 2 || diff >= 22; // Handle wraparound
-    });
-  }
+  // Filter by hour - Show all hours for now (you can adjust the slider to see different times)
+  // Keeping this disabled so you can see all risk areas regardless of time
+  // if (hour !== undefined) {
+  //   filtered = filtered.filter((f) => {
+  //     const diff = Math.abs(f.properties.hour - hour);
+  //     return diff <= 2 || diff >= 22; // Handle wraparound
+  //   });
+  //   console.log("⏰ After hour filter:", filtered.length);
+  // }
   
-  // Filter by vehicle
+  // Filter by vehicle type - ENABLED to show vehicle-specific risks
   if (vehicle) {
+    const beforeFilter = filtered.length;
     filtered = filtered.filter((f) => f.properties.vehicle === vehicle);
+    console.log(`🚗 Vehicle filter (${vehicle}): ${beforeFilter} → ${filtered.length} segments`);
   }
   
+  console.log("✅ Returning segments:", filtered.length);
   return {
     type: "FeatureCollection",
     features: filtered,
@@ -121,7 +132,7 @@ export async function mockGetTopSpots(
 ): Promise<TopSpot[]> {
   const data = segmentsTodayData as SegmentsTodayResponse;
   
-  let spots = data.features
+  const spots = data.features
     .filter((f) => !vehicle || f.properties.vehicle === vehicle)
     .map((f) => {
       const coords = f.geometry.coordinates as number[];

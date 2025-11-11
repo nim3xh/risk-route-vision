@@ -1,4 +1,4 @@
-export type Vehicle = "Car" | "Bus" | "Motor Cycle" | "Three Wheeler";
+export type Vehicle = "Car" | "Bus" | "Motor Cycle" | "Three Wheeler" | "Van" | "Lorry";
 
 export interface ScoreRequest {
   lat: number;

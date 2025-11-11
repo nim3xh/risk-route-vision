@@ -1,5 +1,5 @@
 import { Vehicle } from "@/types";
-import { Car, Bus, Bike, TramFront } from "lucide-react";
+import { Car, Bus, Bike, TramFront, Truck, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface VehicleSelectProps {
@@ -12,6 +12,8 @@ const vehicles: Array<{ value: Vehicle; label: string; icon: typeof Car }> = [
   { value: "Bus", label: "Bus", icon: Bus },
   { value: "Motor Cycle", label: "Motorcycle", icon: Bike },
   { value: "Three Wheeler", label: "Three Wheeler", icon: TramFront },
+  { value: "Van", label: "Van", icon: Package },
+  { value: "Lorry", label: "Lorry", icon: Truck },
 ];
 
 export function VehicleSelect({ value, onChange }: VehicleSelectProps) {

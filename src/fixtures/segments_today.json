@@ -1,116 +1,228 @@
-{
+﻿{
   "type": "FeatureCollection",
   "features": [
     {
       "type": "Feature",
       "geometry": {
         "type": "Point",
-        "coordinates": [80.52, 7.31]
+        "coordinates": [80.4894, 6.9864]
       },
       "properties": {
         "segment_id": "seg_001",
-        "risk_0_100": 75,
+        "risk_0_100": 95,
         "hour": 8,
         "vehicle": "Car",
-        "top_cause": "Sharp curve with poor visibility"
+        "top_cause": "Dangerous sharp curve with very poor visibility"
       }
     },
     {
       "type": "Feature",
       "geometry": {
         "type": "Point",
-        "coordinates": [80.525, 7.315]
+        "coordinates": [80.492, 6.988]
       },
       "properties": {
         "segment_id": "seg_002",
-        "risk_0_100": 45,
+        "risk_0_100": 25,
         "hour": 8,
         "vehicle": "Car",
-        "top_cause": "Moderate traffic intersection"
+        "top_cause": "Well-maintained road section"
       }
     },
     {
       "type": "Feature",
       "geometry": {
         "type": "Point",
-        "coordinates": [80.53, 7.32]
+        "coordinates": [80.486, 6.984]
       },
       "properties": {
         "segment_id": "seg_003",
-        "risk_0_100": 82,
+        "risk_0_100": 85,
         "hour": 8,
-        "vehicle": "Motor Cycle",
-        "top_cause": "Steep descent with gravel"
+        "vehicle": "Car",
+        "top_cause": "Steep descent with hairpin turn"
       }
     },
     {
       "type": "Feature",
       "geometry": {
         "type": "Point",
-        "coordinates": [80.535, 7.325]
+        "coordinates": [80.495, 6.990]
       },
       "properties": {
         "segment_id": "seg_004",
-        "risk_0_100": 28,
+        "risk_0_100": 92,
         "hour": 8,
-        "vehicle": "Car",
-        "top_cause": "Well-maintained straight road"
+        "vehicle": "Motor Cycle",
+        "top_cause": "Narrow road with blind spots - high risk for motorcycles"
       }
     },
     {
       "type": "Feature",
       "geometry": {
         "type": "Point",
-        "coordinates": [80.54, 7.33]
+        "coordinates": [80.482, 6.982]
       },
       "properties": {
         "segment_id": "seg_005",
-        "risk_0_100": 62,
-        "hour": 8,
-        "vehicle": "Bus",
-        "top_cause": "Narrow bridge with heavy traffic"
+        "risk_0_100": 15,
+        "hour": 9,
+        "vehicle": "Car",
+        "top_cause": "Safe residential area"
       }
     },
     {
       "type": "Feature",
       "geometry": {
         "type": "Point",
-        "coordinates": [80.545, 7.335]
+        "coordinates": [80.491, 6.992]
       },
       "properties": {
         "segment_id": "seg_006",
-        "risk_0_100": 91,
+        "risk_0_100": 78,
         "hour": 17,
-        "vehicle": "Three Wheeler",
-        "top_cause": "Blind corner during rush hour"
+        "vehicle": "Bus",
+        "top_cause": "Heavy traffic during rush hour - difficult for buses"
       }
     },
     {
       "type": "Feature",
       "geometry": {
         "type": "Point",
-        "coordinates": [80.55, 7.34]
+        "coordinates": [80.488, 6.987]
       },
       "properties": {
         "segment_id": "seg_007",
-        "risk_0_100": 35,
-        "hour": 14,
+        "risk_0_100": 42,
+        "hour": 10,
         "vehicle": "Car",
-        "top_cause": "Minor intersection with good visibility"
+        "top_cause": "Moderate traffic zone"
       }
     },
     {
       "type": "Feature",
       "geometry": {
         "type": "Point",
-        "coordinates": [80.555, 7.305]
+        "coordinates": [80.493, 6.989]
       },
       "properties": {
         "segment_id": "seg_008",
-        "risk_0_100": 78,
+        "risk_0_100": 88,
         "hour": 18,
+        "vehicle": "Three Wheeler",
+        "top_cause": "Wet road with poor drainage - dangerous for three wheelers"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [80.4905, 6.9855]
+      },
+      "properties": {
+        "segment_id": "seg_009",
+        "risk_0_100": 65,
+        "hour": 14,
         "vehicle": "Motor Cycle",
-        "top_cause": "Wet road surface after rain"
+        "top_cause": "Uneven road surface - risky for motorcycles"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [80.4875, 6.9905]
+      },
+      "properties": {
+        "segment_id": "seg_010",
+        "risk_0_100": 70,
+        "hour": 16,
+        "vehicle": "Bus",
+        "top_cause": "Tight turn - challenging for buses"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [80.4920, 6.9835]
+      },
+      "properties": {
+        "segment_id": "seg_011",
+        "risk_0_100": 55,
+        "hour": 12,
+        "vehicle": "Three Wheeler",
+        "top_cause": "Medium traffic - moderate risk for three wheelers"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [80.4865, 6.9875]
+      },
+      "properties": {
+        "segment_id": "seg_012",
+        "risk_0_100": 38,
+        "hour": 11,
+        "vehicle": "Bus",
+        "top_cause": "Wide road - safe for buses"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [80.4910, 6.9845]
+      },
+      "properties": {
+        "segment_id": "seg_013",
+        "risk_0_100": 72,
+        "hour": 15,
+        "vehicle": "Van",
+        "top_cause": "Narrow lane with limited visibility - risky for vans"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [80.4850, 6.9895]
+      },
+      "properties": {
+        "segment_id": "seg_014",
+        "risk_0_100": 82,
+        "hour": 7,
+        "vehicle": "Lorry",
+        "top_cause": "Steep incline with sharp turn - difficult for lorries"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [80.4935, 6.9825]
+      },
+      "properties": {
+        "segment_id": "seg_015",
+        "risk_0_100": 48,
+        "hour": 13,
+        "vehicle": "Van",
+        "top_cause": "Moderate traffic - manageable for vans"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [80.4880, 6.9915]
+      },
+      "properties": {
+        "segment_id": "seg_016",
+        "risk_0_100": 76,
+        "hour": 19,
+        "vehicle": "Lorry",
+        "top_cause": "Low bridge clearance - hazardous for lorries"
       }
     }
   ]
