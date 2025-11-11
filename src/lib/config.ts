@@ -1,4 +1,5 @@
 import { MapStyle } from "@/store/useUiStore";
+import type { StyleSpecification } from "maplibre-gl";
 
 export const config = {
   apiBase: import.meta.env.VITE_API_BASE || "",
@@ -20,8 +21,8 @@ export const config = {
 /**
  * Get MapLibre style URL based on map style selection
  */
-export function getMapStyleUrl(style: MapStyle): string | Record<string, unknown> {
-  const mapStyleUrls: Record<MapStyle, string | Record<string, unknown>> = {
+export function getMapStyleUrl(style: MapStyle): string | StyleSpecification {
+  const mapStyleUrls: Record<MapStyle, string | StyleSpecification> = {
     streets: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
     satellite: getSatelliteStyle(),
     outdoors: "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json",
@@ -35,7 +36,7 @@ export function getMapStyleUrl(style: MapStyle): string | Record<string, unknown
 /**
  * Create a custom satellite style using free satellite imagery with place name labels
  */
-function getSatelliteStyle(): Record<string, unknown> {
+function getSatelliteStyle(): StyleSpecification {
   return {
     version: 8,
     name: "Satellite",
