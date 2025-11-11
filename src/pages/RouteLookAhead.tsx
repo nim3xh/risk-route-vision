@@ -7,14 +7,16 @@ import { useUiStore } from "@/store/useUiStore";
 import { riskApi } from "@/lib/api/client";
 import { config } from "@/lib/config";
 import { Button } from "@/components/ui/button";
-import { Navigation, AlertTriangle, Route as RouteIcon, MapPinned, Clock } from "lucide-react";
+import { Navigation, AlertTriangle, Route as RouteIcon, MapPinned, Clock, Menu } from "lucide-react";
 import { toast } from "sonner";
 import { samplePolyline } from "@/lib/geo/sampling";
 import { Badge } from "@/components/ui/badge";
 import { getRoute, reverseGeocode } from "@/lib/api/routingService";
 import { SegmentFeature } from "@/types";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 export default function RouteLookAhead() {
+  const [panelOpen, setPanelOpen] = useState(false);
   const { vehicle, mockMode, mapStyle, setVehicle, setMapStyle } = useUiStore();
   const [fromLocation, setFromLocation] = useState<{ lat: number; lng: number; name: string } | null>(null);
   const [toLocation, setToLocation] = useState<{ lat: number; lng: number; name: string } | null>(null);
@@ -160,24 +162,159 @@ export default function RouteLookAhead() {
   return (
     <div className="flex h-screen flex-col">
       {/* Header */}
-      <header className="border-b bg-card px-4 py-3 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Route Look-Ahead</h1>
-            <p className="text-sm text-muted-foreground">
-              Analyze risk along your route
-            </p>
+      <header className="border-b bg-card px-3 py-2 md:px-4 md:py-3 shadow-sm">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            {/* Mobile menu button */}
+            <Sheet open={panelOpen} onOpenChange={setPanelOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="lg:hidden">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-80 p-4 overflow-y-auto">
+                <div className="space-y-4">
+                  <VehicleSelect value={vehicle} onChange={setVehicle} />
+                  <MapStyleSelector value={mapStyle} onChange={setMapStyle} />
+
+                  {/* From Location */}
+                  <LocationSearch
+                    label="From"
+                    placeholder="Search starting location..."
+                    onLocationSelect={setFromLocation}
+                    disabled={isAnalyzing}
+                  />
+
+                  {/* Use Current Location Button */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={useCurrentLocation}
+                    disabled={isAnalyzing}
+                    className="w-full"
+                  >
+                    <MapPinned className="mr-2 h-4 w-4" />
+                    Use Current Location
+                  </Button>
+
+                  {/* To Location */}
+                  <LocationSearch
+                    label="To"
+                    placeholder="Search destination..."
+                    onLocationSelect={setToLocation}
+                    disabled={isAnalyzing}
+                  />
+
+                  {/* Analyze Route Button */}
+                  <Button
+                    onClick={analyzeRoute}
+                    disabled={isAnalyzing || !fromLocation || !toLocation}
+                    className="w-full"
+                  >
+                    {isAnalyzing ? (
+                      <>
+                        <RouteIcon className="mr-2 h-4 w-4 animate-spin" />
+                        {isFetchingRoute ? "Finding route..." : "Analyzing risk..."}
+                      </>
+                    ) : (
+                      <>
+                        <RouteIcon className="mr-2 h-4 w-4" />
+                        Analyze Route
+                      </>
+                    )}
+                  </Button>
+
+                  {/* Route Info */}
+                  {routeDistance !== null && routeDuration !== null && (
+                    <div className="rounded-lg border bg-card p-3 space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Distance</span>
+                        <span className="font-medium">
+                          {(routeDistance / 1000).toFixed(1)} km
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Duration</span>
+                        <span className="font-medium flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {Math.round(routeDuration / 60)} min
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Risk Analysis Results */}
+                  {maxRisk !== null && (
+                    <div className="space-y-3 rounded-lg border bg-card p-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Route Risk Analysis</span>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-muted-foreground">Max Risk</span>
+                          <Badge
+                            variant={maxRisk >= 70 ? "destructive" : maxRisk >= 40 ? "default" : "secondary"}
+                          >
+                            {maxRisk}/100
+                          </Badge>
+                        </div>
+                        
+                        {avgRisk !== null && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-muted-foreground">Avg Risk</span>
+                            <Badge
+                              variant={avgRisk >= 70 ? "destructive" : avgRisk >= 40 ? "default" : "secondary"}
+                            >
+                              {avgRisk}/100
+                            </Badge>
+                          </div>
+                        )}
+                      </div>
+
+                      {maxRisk >= 70 && (
+                        <div className="flex items-start gap-2 rounded-lg bg-destructive/10 p-3 text-sm">
+                          <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-destructive" />
+                          <span className="text-destructive">
+                            High risk area detected ahead. Consider alternative route.
+                          </span>
+                        </div>
+                      )}
+                      
+                      {maxRisk < 70 && maxRisk >= 40 && (
+                        <div className="flex items-start gap-2 rounded-lg bg-yellow-500/10 p-3 text-sm">
+                          <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-yellow-600" />
+                          <span className="text-yellow-600">
+                            Moderate risk. Drive with caution.
+                          </span>
+                        </div>
+                      )}
+                      
+                      <div className="text-xs text-muted-foreground">
+                        📍 Analyzed {routeSegments.length} points along route
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
+            <div>
+              <h1 className="text-lg md:text-2xl font-bold text-foreground">Route Look-Ahead</h1>
+              <p className="text-xs md:text-sm text-muted-foreground hidden sm:block">
+                Analyze risk along your route
+              </p>
+            </div>
           </div>
-          <Button variant="outline" size="sm" onClick={() => window.location.href = "/"}>
-            <Navigation className="mr-2 h-4 w-4" />
-            Back to Map
+          <Button variant="outline" size="sm" onClick={() => window.location.href = "/"} className="text-xs md:text-sm">
+            <Navigation className="mr-1 md:mr-2 h-3 w-3 md:h-4 md:w-4" />
+            <span className="hidden xs:inline">Back</span>
           </Button>
         </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Left Panel */}
-        <aside className="w-80 space-y-4 overflow-y-auto border-r bg-background p-4">
+        {/* Left Panel (Desktop only) */}
+        <aside className="hidden lg:block w-80 space-y-4 overflow-y-auto border-r bg-background p-4">
           <VehicleSelect value={vehicle} onChange={setVehicle} />
           <MapStyleSelector value={mapStyle} onChange={setMapStyle} />
 

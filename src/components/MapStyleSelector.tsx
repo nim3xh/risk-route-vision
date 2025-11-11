@@ -49,20 +49,20 @@ export function MapStyleSelector({ value, onChange }: MapStyleSelectorProps) {
   return (
     <div className="space-y-2">
       <span className="text-sm font-medium">Map Style</span>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2">
         {mapStyles.map(({ value: v, label, icon: Icon, description }) => (
           <button
             key={v}
             onClick={() => onChange(v)}
             title={description}
             className={cn(
-              "flex flex-col items-center gap-1 rounded-lg border-2 px-3 py-2 text-sm font-medium transition-all",
+              "flex flex-col items-center justify-center gap-1 rounded-lg border-2 px-2 py-2.5 text-sm font-medium transition-all min-h-[60px]",
               value === v
                 ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                : "border-border bg-card text-card-foreground hover:border-primary/50 hover:bg-accent"
+                : "border-border bg-card text-card-foreground hover:border-primary/50 hover:bg-accent active:scale-98"
             )}
           >
-            <Icon className="h-5 w-5" />
+            <Icon className="h-4 w-4 md:h-5 md:w-5" />
             <span className="text-xs">{label}</span>
           </button>
         ))}

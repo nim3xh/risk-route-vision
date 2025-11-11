@@ -27,8 +27,8 @@ export function TopSpotsPanel({ spots, onSelectSpot }: TopSpotsPanelProps) {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">Top Risky Spots Today</CardTitle>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base md:text-lg">Top Risky Spots Today</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
         {spots.map((spot, index) => {
@@ -37,19 +37,19 @@ export function TopSpotsPanel({ spots, onSelectSpot }: TopSpotsPanelProps) {
             <button
               key={spot.segment_id}
               onClick={() => onSelectSpot?.(spot)}
-              className="w-full rounded-lg border bg-card p-3 text-left transition-all hover:border-primary hover:shadow-sm"
+              className="w-full rounded-lg border bg-card p-2 md:p-3 text-left transition-all hover:border-primary hover:shadow-sm active:scale-98"
             >
-              <div className="flex items-start gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-bold">
+              <div className="flex items-start gap-2 md:gap-3">
+                <div className="flex h-6 w-6 md:h-8 md:w-8 items-center justify-center rounded-full bg-muted text-xs font-bold flex-shrink-0">
                   {index + 1}
                 </div>
-                <div className="flex-1 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold">
+                <div className="flex-1 space-y-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs md:text-sm font-semibold truncate">
                       {spot.segment_id}
                     </span>
                     <span
-                      className="text-lg font-bold"
+                      className="text-base md:text-lg font-bold flex-shrink-0"
                       style={{ color: riskToColor(spot.risk_0_100) }}
                     >
                       {spot.risk_0_100}
@@ -60,8 +60,8 @@ export function TopSpotsPanel({ spots, onSelectSpot }: TopSpotsPanelProps) {
                   </div>
                   {spot.top_cause && (
                     <div className="flex items-start gap-1 text-xs text-muted-foreground">
-                      <AlertTriangle className="mt-0.5 h-3 w-3" />
-                      <span>{spot.top_cause}</span>
+                      <AlertTriangle className="mt-0.5 h-3 w-3 flex-shrink-0" />
+                      <span className="line-clamp-2">{spot.top_cause}</span>
                     </div>
                   )}
                 </div>

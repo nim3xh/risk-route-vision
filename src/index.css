@@ -103,6 +103,13 @@ All colors MUST be HSL.
   #root {
     width: 100%;
     height: 100vh;
+    height: 100dvh; /* Use dynamic viewport height for mobile browsers */
+  }
+
+  /* Prevent horizontal scroll on mobile */
+  html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
   }
 
   /* MapLibre GL overrides */
@@ -112,6 +119,22 @@ All colors MUST be HSL.
 
   .maplibregl-ctrl-attrib {
     font-size: 10px;
+  }
+
+  /* Responsive map controls for mobile */
+  .maplibregl-ctrl-top-right,
+  .maplibregl-ctrl-bottom-right {
+    @apply mr-2 md:mr-4;
+  }
+
+  .maplibregl-ctrl-top-left,
+  .maplibregl-ctrl-bottom-left {
+    @apply ml-2 md:ml-4;
+  }
+
+  .maplibregl-ctrl-bottom-left,
+  .maplibregl-ctrl-bottom-right {
+    @apply mb-2 md:mb-4;
   }
 
   /* User location marker pulse animation */
@@ -128,5 +151,23 @@ All colors MUST be HSL.
       transform: scale(1);
       opacity: 0;
     }
+  }
+
+  /* Touch target improvements for mobile */
+  @media (max-width: 768px) {
+    button, a, [role="button"] {
+      min-height: 44px; /* iOS recommended touch target size */
+      min-width: 44px;
+    }
+  }
+
+  /* Smooth scrolling for panels */
+  .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Active state for touch devices */
+  .active\:scale-98:active {
+    transform: scale(0.98);
   }
 }
