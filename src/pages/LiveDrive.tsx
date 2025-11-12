@@ -3,6 +3,7 @@ import { MapWeb } from "@/components/MapWeb";
 import { VehicleSelect } from "@/components/VehicleSelect";
 import { MapStyleSelector } from "@/components/MapStyleSelector";
 import { RiskBanner } from "@/components/RiskBanner";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { useUiStore } from "@/store/useUiStore";
 import { useRiskStore } from "@/store/useRiskStore";
 import { riskApi } from "@/lib/api/client";
@@ -292,10 +293,13 @@ export default function LiveDrive() {
               </p>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={() => window.location.href = "/"} className="text-xs md:text-sm">
-            <Navigation className="mr-1 md:mr-2 h-3 w-3 md:h-4 md:w-4" />
-            <span className="hidden xs:inline">Back</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Button variant="outline" size="sm" onClick={() => window.location.href = "/"} className="text-xs md:text-sm">
+              <Navigation className="mr-1 md:mr-2 h-3 w-3 md:h-4 md:w-4" />
+              <span className="hidden xs:inline">Back</span>
+            </Button>
+          </div>
         </div>
       </header>
 

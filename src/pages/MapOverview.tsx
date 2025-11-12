@@ -6,6 +6,7 @@ import { MapStyleSelector } from "@/components/MapStyleSelector";
 import { Legend } from "@/components/Legend";
 import { SegmentInfoCard } from "@/components/SegmentInfoCard";
 import { TopSpotsPanel } from "@/components/TopSpotsPanel";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { useUiStore } from "@/store/useUiStore";
 import { useRiskStore } from "@/store/useRiskStore";
 import { riskApi } from "@/lib/api/client";
@@ -130,6 +131,7 @@ export default function MapOverview() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             <Button
               variant={mockMode ? "default" : "outline"}
               size="sm"
