@@ -4,6 +4,8 @@ import { SegmentFeature } from "@/types";
 import { riskToColor } from "@/lib/utils/colors";
 import { getMapStyleUrl } from "@/lib/config";
 import { useUiStore, MapStyle } from "@/store/useUiStore";
+import { LocationButton } from "@/components/LocationButton";
+import { MapAttribution } from "@/components/MapAttribution";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 interface MapWebProps {
@@ -17,6 +19,9 @@ export function MapWebNative({ center, segments, onSegmentClick, onCenterChange 
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const userLocationMarker = useRef<maplibregl.Marker | null>(null);
+  const moveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hasFlownToUserLocation = useRef(false); // Track if we've already flown to user location
+  const isUserDragging = useRef(false); // Track if user is actively dragging
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const { mapStyle } = useUiStore();
   const currentMapStyle = getMapStyleUrl(mapStyle);
@@ -24,15 +29,16 @@ export function MapWebNative({ center, segments, onSegmentClick, onCenterChange 
   const [lastAppliedStyle, setLastAppliedStyle] = useState<MapStyle | null>(null);
 
   const geojsonData = useMemo(() => {
-    console.log("📊 Creating GeoJSON data with segments:", segments.length);
     if (segments.length === 0) {
-      console.log("⚠️ No segments available - returning empty FeatureCollection");
+      return {
+        type: "FeatureCollection" as const,
+        features: []
+      };
     }
     const data = {
       type: "FeatureCollection" as const,
       features: segments.map((segment) => {
         const color = riskToColor(segment.properties.risk_0_100);
-        console.log(`  - Segment ${segment.properties.segment_id}: risk=${segment.properties.risk_0_100}, color=${color}, vehicle=${segment.properties.vehicle}`);
         return {
           type: "Feature" as const,
           geometry: segment.geometry,
@@ -43,64 +49,49 @@ export function MapWebNative({ center, segments, onSegmentClick, onCenterChange 
         };
       }),
     };
-    console.log("✅ GeoJSON data created with", data.features.length, "features");
     return data;
   }, [segments]);
 
   // Helper function to add/update layers and event handlers
   const setupMapLayers = useCallback((mapInstance: maplibregl.Map) => {
     if (!mapInstance) {
-      console.warn("⚠️ Map instance is null, cannot setup layers");
       return;
     }
 
     // Make sure style is loaded before adding layers
     if (!mapInstance.isStyleLoaded()) {
-      console.warn("⚠️ Map style not loaded yet, waiting...");
       mapInstance.once('style.load', () => {
-        console.log("✅ Style loaded, retrying layer setup");
         setupMapLayers(mapInstance);
       });
       return;
     }
 
     if (segments.length === 0) {
-      console.warn("⚠️ No segments to display! Segments array is empty.");
       return;
     }
 
     if (geojsonData.features.length === 0) {
-      console.warn("⚠️ No GeoJSON features to display! Features array is empty.");
       return;
     }
 
-    console.log("🔧 Setting up map layers with", segments.length, "segments");
-    console.log("📊 GeoJSON features:", geojsonData.features.length);
-    console.log("📦 First feature:", geojsonData.features[0]);
-
     // Remove existing layers and source if they exist
     if (mapInstance.getLayer("segments-labels")) {
-      console.log("🗑️ Removing existing labels layer");
       mapInstance.removeLayer("segments-labels");
     }
     if (mapInstance.getLayer("segments-circles")) {
-      console.log("🗑️ Removing existing circles layer");
       mapInstance.removeLayer("segments-circles");
     }
     if (mapInstance.getSource("segments")) {
-      console.log("🗑️ Removing existing segments source");
       mapInstance.removeSource("segments");
     }
 
     // Add source
-    console.log("➕ Adding segments source with", geojsonData.features.length, "features");
     mapInstance.addSource("segments", {
       type: "geojson",
       data: geojsonData as GeoJSON.FeatureCollection,
     });
 
     // Add circle layer
-    console.log("🎨 Adding circles layer");
     mapInstance.addLayer({
       id: "segments-circles",
       type: "circle",
@@ -130,7 +121,6 @@ export function MapWebNative({ center, segments, onSegmentClick, onCenterChange 
     });
 
     // Add labels layer
-    console.log("🏷️ Adding labels layer");
     mapInstance.addLayer({
       id: "segments-labels",
       type: "symbol",
@@ -203,85 +193,64 @@ export function MapWebNative({ center, segments, onSegmentClick, onCenterChange 
     mapInstance.on("mouseleave", "segments-circles", () => {
       popup.remove();
     });
-
-    console.log("✅ Map layers and handlers setup complete");
-    console.log("🗺️ Layers on map:", mapInstance.getStyle()?.layers?.map(l => l.id).join(", "));
-    
-    // Debug: Check if source has data
-    setTimeout(() => {
-      const source = mapInstance.getSource("segments") as maplibregl.GeoJSONSource;
-      if (source) {
-        console.log("🔍 Segments source exists");
-        // Query rendered features
-        const features = mapInstance.querySourceFeatures("segments");
-        console.log("🎯 Rendered features:", features.length);
-        if (features.length > 0) {
-          console.log("📍 First rendered feature:", features[0]);
-        }
-      }
-    }, 1000);
   }, [geojsonData, segments, onSegmentClick]);
 
-  // Get user's current location
-  useEffect(() => {
-    if ("geolocation" in navigator) {
-      console.log("📍 Requesting device location...");
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          setUserLocation({ lat: latitude, lng: longitude });
-          console.log("✅ Got user location:", { lat: latitude, lng: longitude });
-        },
-        (error) => {
-          console.warn("⚠️ Could not get location:", error.message);
-          console.log("Using default center instead");
-        },
-        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-      );
-    } else {
-      console.warn("⚠️ Geolocation not supported by browser");
-    }
-  }, []);
+  // Note: User location is only fetched when clicking the location button
+  // No auto-location detection on load to keep focus on default area
 
   useEffect(() => {
     if (!mapContainer.current) return;
     if (map.current) return; // Initialize map only once
-
-    console.log("🗺️ Initializing native MapLibre map with style:", mapStyle);
 
     try {
       map.current = new maplibregl.Map({
         container: mapContainer.current,
         style: currentMapStyle,
         center: [center.lng, center.lat],
-        zoom: 14, // Increased zoom for better detail view
+        zoom: 14,
+        // Performance optimizations
+        attributionControl: false,
+        refreshExpiredTiles: false,
       });
 
       map.current.on("load", () => {
-        console.log("✅ Map loaded successfully!");
-        console.log("📍 Map center:", map.current?.getCenter());
-        console.log("🔍 Map zoom:", map.current?.getZoom());
-        console.log("🎨 Map style loaded:", map.current?.isStyleLoaded());
-        
         if (!map.current) return;
 
         // Setup layers using helper function
-        console.log("🚀 Calling setupMapLayers from initial load");
         setupMapLayers(map.current);
         setIsMapLoaded(true);
         setLastAppliedStyle(mapStyle);
       });
 
       map.current.on("error", (e) => {
-        console.error("❌ Map error:", e);
+        console.error("Map error:", e);
       });
 
-      // Handle center change
+      // Track when user starts and stops dragging
+      map.current.on("dragstart", () => {
+        isUserDragging.current = true;
+      });
+
+      map.current.on("dragend", () => {
+        isUserDragging.current = false;
+      });
+
+      // Throttled center change handler to prevent excessive updates
       if (onCenterChange) {
         map.current.on("move", () => {
           if (!map.current) return;
-          const center = map.current.getCenter();
-          onCenterChange({ lat: center.lat, lng: center.lng });
+          
+          // Clear existing timeout
+          if (moveTimeoutRef.current) {
+            clearTimeout(moveTimeoutRef.current);
+          }
+          
+          // Throttle the callback - only fire every 150ms
+          moveTimeoutRef.current = setTimeout(() => {
+            if (!map.current) return;
+            const center = map.current.getCenter();
+            onCenterChange({ lat: center.lat, lng: center.lng });
+          }, 150);
         });
       }
     } catch (err) {
@@ -289,6 +258,9 @@ export function MapWebNative({ center, segments, onSegmentClick, onCenterChange 
     }
 
     return () => {
+      if (moveTimeoutRef.current) {
+        clearTimeout(moveTimeoutRef.current);
+      }
       if (map.current) {
         map.current.remove();
         map.current = null;
@@ -300,56 +272,53 @@ export function MapWebNative({ center, segments, onSegmentClick, onCenterChange 
   // Update layers when segments change (handles data loading after map initialization)
   useEffect(() => {
     if (!map.current || !isMapLoaded) {
-      console.log("⏭️ Skipping segments update - map not ready");
       return;
     }
     
     if (segments.length === 0) {
-      console.log("⏭️ No segments to update yet, waiting for data...");
       return;
     }
-    
-    console.log("🔄 Segments data changed, updating layers with", segments.length, "segments");
     
     // Re-setup all layers with new data
     setupMapLayers(map.current);
   }, [segments, isMapLoaded, setupMapLayers]);
 
-  // Update center when it changes
+  // Update center when it changes (but not while user is dragging)
   useEffect(() => {
-    if (!map.current) return;
-    map.current.flyTo({ center: [center.lng, center.lat], duration: 1000 });
+    if (!map.current || isUserDragging.current) return;
+    
+    const currentCenter = map.current.getCenter();
+    const distance = Math.sqrt(
+      Math.pow(currentCenter.lng - center.lng, 2) + 
+      Math.pow(currentCenter.lat - center.lat, 2)
+    );
+    
+    // Only update if the change is significant (more than ~100 meters)
+    if (distance > 0.001) {
+      map.current.flyTo({ center: [center.lng, center.lat], duration: 1000 });
+    }
   }, [center]);
 
   // Update map style when it changes
   useEffect(() => {
     if (!map.current || !isMapLoaded) {
-      console.log("⏭️ Skipping style change - map not ready. isMapLoaded:", isMapLoaded);
       return;
     }
     
     // Check if style actually changed
     if (lastAppliedStyle === mapStyle) {
-      console.log("⏭️ Style hasn't changed, skipping reload. Current:", mapStyle);
       return;
     }
-    
-    console.log("🎨 Changing map style from", lastAppliedStyle, "to:", mapStyle);
     
     // Store current center and zoom before style change
     const currentCenter = map.current.getCenter();
     const currentZoom = map.current.getZoom();
-    
-    console.log("💾 Saving current view - center:", currentCenter, "zoom:", currentZoom);
     
     // Change the map style
     map.current.setStyle(currentMapStyle);
     
     // Wait for style to load and restore data
     const handleStyleLoad = () => {
-      console.log("✅ New map style loaded:", currentMapStyle);
-      console.log("🎨 Style is loaded:", map.current?.isStyleLoaded());
-      
       if (!map.current) return;
       
       // Restore center and zoom
@@ -358,12 +327,9 @@ export function MapWebNative({ center, segments, onSegmentClick, onCenterChange 
         zoom: currentZoom
       });
       
-      console.log("📍 Restored view - center:", map.current.getCenter(), "zoom:", map.current.getZoom());
-      
       // Wait a bit for style to fully settle before adding layers
       setTimeout(() => {
         if (!map.current) return;
-        console.log("🚀 Calling setupMapLayers from style change");
         setupMapLayers(map.current);
         setLastAppliedStyle(mapStyle);
       }, 100);
@@ -434,19 +400,31 @@ export function MapWebNative({ center, segments, onSegmentClick, onCenterChange 
       )
       .addTo(map.current);
 
-    // Fly to user location
-    map.current.flyTo({
-      center: [userLocation.lng, userLocation.lat],
-      zoom: 15,
-      duration: 2000,
-    });
-
-    console.log("🎯 User location marker added at:", userLocation);
+    // Note: No auto-fly to location. User location marker is added but
+    // map only flies to location when user clicks the location button
   }, [userLocation]);
+
+  const handleLocationButtonClick = useCallback((location: { lat: number; lng: number }) => {
+    setUserLocation(location);
+    if (map.current) {
+      map.current.flyTo({
+        center: [location.lng, location.lat],
+        zoom: 15,
+        duration: 2000,
+      });
+      hasFlownToUserLocation.current = true;
+    }
+  }, []);
 
   return (
     <div style={{ width: "100%", height: "100%", position: "relative" }}>
       <div ref={mapContainer} style={{ width: "100%", height: "100%" }} />
+      
+      {/* Map provider attribution */}
+      <MapAttribution />
+      
+      {/* Location button */}
+      <LocationButton onLocationFound={handleLocationButtonClick} />
     </div>
   );
 }

@@ -1,10 +1,12 @@
-import { useMemo, useEffect, useState } from "react";
-import Map, { Layer, Source, MapLayerMouseEvent, Marker } from "react-map-gl/maplibre";
+import { useMemo, useEffect, useState, useCallback, useRef } from "react";
+import Map, { Layer, Source, MapLayerMouseEvent, Marker, MapRef } from "react-map-gl/maplibre";
 import type { ViewState } from "react-map-gl/maplibre";
 import { SegmentFeature } from "@/types";
 import { riskToColor } from "@/lib/utils/colors";
 import { getMapStyleUrl } from "@/lib/config";
 import { useUiStore } from "@/store/useUiStore";
+import { LocationButton } from "@/components/LocationButton";
+import { MapAttribution } from "@/components/MapAttribution";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 interface MapWebProps {
@@ -20,42 +22,16 @@ export function MapWeb({ center, segments, routeLine, onSegmentClick, onCenterCh
   const [mapError, setMapError] = useState<string | null>(null);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const mapRef = useRef<MapRef>(null);
+  
+  // Use ref to throttle move events
+  const moveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const currentMapStyle = getMapStyleUrl(mapStyle);
 
-  // Debug: Component is rendering
-  console.log("🗺️ MapWeb component rendered", { segmentsCount: segments.length, hasRouteLine: !!routeLine, mapStyle });
-
-  // Get user's current location
-  useEffect(() => {
-    if ("geolocation" in navigator) {
-      console.log("📍 Requesting device location...");
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          setUserLocation({ lat: latitude, lng: longitude });
-          console.log("✅ Got user location:", { lat: latitude, lng: longitude });
-        },
-        (error) => {
-          console.warn("⚠️ Could not get location:", error.message);
-          console.log("Using default center instead");
-        },
-        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-      );
-    } else {
-      console.warn("⚠️ Geolocation not supported by browser");
-    }
-  }, []);
-
-  useEffect(() => {
-    console.log("MapWeb - Rendering with:", {
-      center,
-      segmentsCount: segments.length,
-      firstSegment: segments[0],
-      currentMapStyle,
-      mapStyle,
-    });
-  }, [center, segments, currentMapStyle, mapStyle]);
+  // Note: User location is only fetched when clicking the location button
+  // No auto-location detection on load to keep focus on default area
+  
   const geojsonData = useMemo(() => {
     return {
       type: "FeatureCollection" as const,
@@ -70,7 +46,23 @@ export function MapWeb({ center, segments, routeLine, onSegmentClick, onCenterCh
     };
   }, [segments]);
 
-  const handleClick = (event: MapLayerMouseEvent) => {
+  // Throttled move handler to prevent excessive re-renders during drag
+  const handleMove = useCallback((evt: { viewState: ViewState & { longitude: number; latitude: number } }) => {
+    if (!onCenterChange) return;
+    
+    // Clear existing timeout
+    if (moveTimeoutRef.current) {
+      clearTimeout(moveTimeoutRef.current);
+    }
+    
+    // Throttle the callback - only fire every 100ms
+    moveTimeoutRef.current = setTimeout(() => {
+      const viewState = evt.viewState as ViewState & { longitude: number; latitude: number };
+      onCenterChange({ lat: viewState.latitude, lng: viewState.longitude });
+    }, 100);
+  }, [onCenterChange]);
+
+  const handleClick = useCallback((event: MapLayerMouseEvent) => {
     const feature = event.features?.[0];
     if (feature && onSegmentClick) {
       const segment = segments.find(
@@ -80,19 +72,30 @@ export function MapWeb({ center, segments, routeLine, onSegmentClick, onCenterCh
         onSegmentClick(segment);
       }
     }
-  };
+  }, [segments, onSegmentClick]);
 
-  const handleMapError = (error: { error?: { message?: string }; message?: string }) => {
+  const handleMapError = useCallback((error: { error?: { message?: string }; message?: string }) => {
     console.error("Map error:", error);
     const errorMessage = error.error?.message || error.message || "Failed to load map";
     setMapError(errorMessage);
-  };
+  }, []);
 
-  const handleMapLoad = () => {
-    console.log("Map loaded successfully with style:", currentMapStyle, mapStyle);
+  const handleMapLoad = useCallback(() => {
+    console.log("Map loaded successfully with style:", mapStyle);
     setIsMapLoaded(true);
     setMapError(null);
-  };
+  }, [mapStyle]);
+
+  const handleLocationButtonClick = useCallback((location: { lat: number; lng: number }) => {
+    setUserLocation(location);
+    if (mapRef.current) {
+      mapRef.current.flyTo({
+        center: [location.lng, location.lat],
+        zoom: 15,
+        duration: 2000,
+      });
+    }
+  }, []);
 
   return (
     <div style={{ width: "100%", height: "100%", position: "relative" }}>
@@ -130,6 +133,7 @@ export function MapWeb({ center, segments, routeLine, onSegmentClick, onCenterCh
         </div>
       )}
       <Map
+        ref={mapRef}
         key={`map-${mapStyle}`}
         initialViewState={{
           longitude: center.lng,
@@ -140,14 +144,11 @@ export function MapWeb({ center, segments, routeLine, onSegmentClick, onCenterCh
         mapStyle={currentMapStyle}
         onLoad={handleMapLoad}
         onError={handleMapError}
-        onMove={(evt) => {
-          if (onCenterChange) {
-            const viewState = evt.viewState as ViewState & { longitude: number; latitude: number };
-            onCenterChange({ lat: viewState.latitude, lng: viewState.longitude });
-          }
-        }}
+        onMove={handleMove}
         onClick={handleClick}
         interactiveLayerIds={["segments-circles"]}
+        dragRotate={false}
+        touchZoomRotate={false}
       >
         {/* User location marker */}
         {userLocation && (
@@ -266,6 +267,12 @@ export function MapWeb({ center, segments, routeLine, onSegmentClick, onCenterCh
           </Source>
         )}
       </Map>
+      
+      {/* Map provider attribution */}
+      <MapAttribution />
+      
+      {/* Location button */}
+      <LocationButton onLocationFound={handleLocationButtonClick} />
     </div>
   );
 }

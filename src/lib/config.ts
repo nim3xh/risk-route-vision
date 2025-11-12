@@ -6,9 +6,9 @@ export const config = {
   timezone: import.meta.env.VITE_TIMEZONE || "Asia/Colombo",
   useMockApi: import.meta.env.VITE_USE_MOCK_API === "true" || !import.meta.env.VITE_API_BASE,
   
-  // User's location: 6°59'11" N and 80°29'22" E
+  // Default map center: 6.9893° N, 80.4927° E
   domain: {
-    center: { lat: 6.9864, lng: 80.4894 }, // Converted from degrees/minutes/seconds
+    center: { lat: 6.9893, lng: 80.4927 },
     bounds: {
       minLon: 80.43,
       minLat: 6.94,
