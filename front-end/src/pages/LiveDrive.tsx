@@ -17,7 +17,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 export default function LiveDrive() {
   const [panelOpen, setPanelOpen] = useState(false);
-  const { vehicle, mockMode, mapStyle, setVehicle, setMapStyle } = useUiStore();
+  const { vehicle, mapStyle, setVehicle, setMapStyle } = useUiStore();
   const { currentScore, setCurrentScore, setLoading } = useRiskStore();
   const [isSimulating, setIsSimulating] = useState(false);
   const [isLiveTracking, setIsLiveTracking] = useState(false);
@@ -41,10 +41,11 @@ export default function LiveDrive() {
   const fetchScore = async (lat: number, lng: number) => {
     try {
       setLoading(true);
-      riskApi.setMockMode(mockMode);
+      // Always use real backend (mockMode removed)
       const score = await riskApi.score({ lat, lon: lng, vehicle });
       setCurrentScore(score);
     } catch (err) {
+      console.error("Failed to fetch risk score:", err);
       toast.error("Failed to fetch risk score");
     } finally {
       setLoading(false);
@@ -130,7 +131,7 @@ export default function LiveDrive() {
       fetchScore(currentPosition.lat, currentPosition.lng);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPosition, vehicle, mockMode]); // fetchScore, isSimulating, isLiveTracking intentionally excluded
+  }, [currentPosition, vehicle]); // Removed mockMode dependency
 
   const startSimulation = () => {
     if (isLiveTracking) {

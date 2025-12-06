@@ -1,0 +1,41 @@
+# Trained Model Files
+
+**Important:** Place your trained model files here before running the backend.
+
+## Required Files:
+
+1. **xgb_vehicle_specific_risk.pkl** (Generated from training notebook)
+2. **vehicle_thresholds.csv** (Generated from training notebook)
+
+## How to Get These Files:
+
+1. Run the `XG_BOOST_NEWER.ipynb` notebook in Google Colab
+2. Download the generated files from:
+   - `/content/models/xgb_vehicle_specific_risk.pkl`
+   - `/content/outputs/vehicle_thresholds.csv`
+3. Place them in this directory
+
+## File Structure:
+
+```
+models/
+├── README.md (this file)
+├── xgb_vehicle_specific_risk.pkl (you need to add this)
+└── vehicle_thresholds.csv (you need to add this)
+```
+
+## Without Model Files:
+
+The backend will still work but will use dummy predictions instead of the trained XGBoost model.
+You'll see this warning in the console:
+```
+[Warn] Model file not found, using dummy predictions
+```
+
+## See Full Documentation:
+
+Read `back-end/models/README.md` for complete instructions on:
+- Training the model
+- Model features and performance
+- Testing and troubleshooting
+- Updating the model

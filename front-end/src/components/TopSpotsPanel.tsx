@@ -37,7 +37,7 @@ export function TopSpotsPanel({ spots, onSelectSpot }: TopSpotsPanelProps) {
             <button
               key={spot.segment_id}
               onClick={() => onSelectSpot?.(spot)}
-              className="w-full rounded-lg border bg-card p-2 md:p-3 text-left transition-all hover:border-primary hover:shadow-sm active:scale-98"
+              className="w-full rounded-lg border bg-card p-2 md:p-3 text-left transition-all hover:border-primary active:scale-98 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0"
             >
               <div className="flex items-start gap-2 md:gap-3">
                 <div className="flex h-6 w-6 md:h-8 md:w-8 items-center justify-center rounded-full bg-muted text-xs font-bold flex-shrink-0">

@@ -18,7 +18,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 export default function RouteLookAhead() {
   const [panelOpen, setPanelOpen] = useState(false);
-  const { vehicle, mockMode, mapStyle, setVehicle, setMapStyle } = useUiStore();
+  const { vehicle, mapStyle, setVehicle, setMapStyle } = useUiStore();
   const [fromLocation, setFromLocation] = useState<{ lat: number; lng: number; name: string } | null>(null);
   const [toLocation, setToLocation] = useState<{ lat: number; lng: number; name: string } | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -73,8 +73,7 @@ export default function RouteLookAhead() {
     setRouteDuration(null);
 
     try {
-      riskApi.setMockMode(mockMode);
-      
+      // Using real backend (mockMode removed)
       console.log("🗺️ Fetching route from", fromLocation.name, "to", toLocation.name);
       
       // Get route from routing service
