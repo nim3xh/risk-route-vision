@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MapWebNative as MapWeb } from "@/components/MapWebNative";
 import { HourSlider } from "@/components/HourSlider";
 import { VehicleSelect } from "@/components/VehicleSelect";
@@ -14,14 +14,13 @@ import { riskApi } from "@/lib/api/client";
 import { WeatherPanel } from "@/components/WeatherPanel";
 import { config } from "@/lib/config";
 import { Button } from "@/components/ui/button";
-import { MapPin, Clock, Database, Menu, X, AlertTriangle, Activity, Cpu } from "lucide-react";
+import { MapPin, Clock, Database, AlertTriangle, Activity, Cpu, SlidersHorizontal, Navigation, RefreshCw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 export default function MapOverview() {
-  const [leftPanelOpen, setLeftPanelOpen] = useState(false);
   const [visualizationMode, setVisualizationMode] = useState<VisualizationMode>("labels");
   const [useRealtimeModel, setUseRealtimeModel] = useState(false); // Toggle for realtime ML model
   const { weather: storeWeather, weatherMode, liveWeather, getActiveWeather } = useRiskStore();
@@ -88,7 +87,7 @@ export default function MapOverview() {
     };
   };
 
-  const riskStats = getRiskStats();
+  const riskStats = useMemo(() => getRiskStats(), [segmentsToday]);
 
   useEffect(() => {
     loadData();
@@ -99,8 +98,10 @@ export default function MapOverview() {
     setLoading(true);
     setError(null);
     try {
+      console.log('Loading data with params:', { hour, vehicle, mockMode, useRealtimeModel });
       riskApi.setMockMode(mockMode);
       const activeWeather = getActiveWeather();
+      console.log('Active weather:', activeWeather);
       
       // Choose between historical (fast, cached) and realtime (ML-based) predictions
       const segmentsPromise = useRealtimeModel 
@@ -111,9 +112,18 @@ export default function MapOverview() {
         segmentsPromise,
         riskApi.getTopSpots(vehicle, 10),
       ]);
+      
+      console.log('Loaded segments:', segments.features?.length || 0);
+      console.log('Loaded spots:', spots?.length || 0);
+      
       setSegmentsToday(segments.features);
       setTopSpots(spots);
+      
+      if (segments.features.length === 0) {
+        toast.info("No risk data available for this area. Try adjusting the map view.", { duration: 3000 });
+      }
     } catch (err) {
+      console.error('Error loading data:', err);
       const message = err instanceof Error ? err.message : "Failed to load data";
       setError(message);
       toast.error(message);
@@ -122,262 +132,228 @@ export default function MapOverview() {
     }
   };
 
-  return (
-    <div className="relative flex h-full w-full overflow-hidden bg-slate-950">
-      {/* Floating Controls Overlay */}
-      <div className="absolute top-4 lg:top-6 left-4 lg:left-6 z-10 flex flex-col gap-4 pointer-events-none w-[340px] max-w-[calc(100vw-2rem)]">
-        <div className="pointer-events-auto glass-panel p-5 rounded-[28px] space-y-5 shadow-2xl border-white/10 backdrop-blur-xl">
-          {/* Header */}
-          <div className="flex items-center justify-between pb-3 border-b border-white/10">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-1.5 bg-gradient-to-b from-primary via-primary to-primary/50 rounded-full" />
-              <div>
-                <h3 className="text-base font-black uppercase tracking-tight text-primary">Control Center</h3>
-                <p className="text-[10px] opacity-60">Risk Analysis Settings</p>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant={useRealtimeModel ? "default" : "outline"}
-                size="icon"
-                onClick={() => {
-                  setUseRealtimeModel(!useRealtimeModel);
-                  toast.success(
-                    useRealtimeModel 
-                      ? "Switched to Historical Mode - Using cached data" 
-                      : "Switched to Realtime ML Mode - Independent risk prediction per cell",
-                    { duration: 3000 }
-                  );
-                }}
-                className="h-9 w-9 rounded-2xl shadow-lg transition-all hover:scale-105 active:scale-95"
-                title={useRealtimeModel ? "Using Realtime XGBoost Model - Each cell calculated independently" : "Using Historical Data"}
-              >
-                <Cpu className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={mockMode ? "default" : "outline"}
-                size="icon"
-                onClick={() => {
-                  setMockMode(!mockMode);
-                  toast.info(mockMode ? "Live mode enabled" : "Mock mode enabled");
-                }}
-                className="h-9 w-9 rounded-2xl shadow-lg transition-all hover:scale-105 active:scale-95"
-              >
-                <Database className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-          
-          {/* Controls */}
-          <div className="space-y-4">
-            {/* Model Mode Indicator */}
-            <div className="bg-primary/10 border border-primary/20 p-3 rounded-2xl">
-              <div className="flex items-center gap-2">
-                <Cpu className="h-4 w-4 text-primary" />
-                <div className="flex-1">
-                  <div className="text-xs font-bold text-primary">
-                    {useRealtimeModel ? "⚡ Realtime XGBoost Model" : "📊 Historical Data"}
-                  </div>
-                  <div className="text-[10px] opacity-60">
-                    {useRealtimeModel 
-                      ? "Independent ML prediction per grid cell" 
-                      : "Using cached historical analysis"}
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider opacity-60 mb-2 block">Vehicle Type</label>
-              <VehicleSelect value={vehicle} onChange={setVehicle} />
-            </div>
-            
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider opacity-60 mb-2 block">Map Style</label>
-              <MapStyleSelector value={mapStyle} onChange={setMapStyle} />
-            </div>
-            
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider opacity-60 mb-2 block">Weather</label>
-              <WeatherPanel location={mapCenter} />
-            </div>
-            
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider opacity-60 mb-2 block">Time of Day</label>
-              <HourSlider value={hour} onChange={setHour} />
-            </div>
-            
-            <div className="pt-2 border-t border-white/10">
-              <label className="text-[10px] font-bold uppercase tracking-wider opacity-60 mb-3 block">Visualization Mode</label>
-              <RiskVisualizationToggle 
-                mode={visualizationMode}
-                onChange={setVisualizationMode}
-              />
-            </div>
-          </div>
-          
-          {/* Action Buttons */}
-          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/10">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={resetToNow}
-              className="rounded-2xl font-semibold transition-all hover:scale-105 active:scale-95"
-            >
-              <Clock className="mr-2 h-4 w-4" />
-              Now
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setMapCenter(config.domain.center)}
-              className="rounded-2xl font-semibold transition-all hover:scale-105 active:scale-95"
-            >
-              <MapPin className="mr-2 h-4 w-4" />
-              Reset
-            </Button>
-          </div>
+  const ControlsPanel = () => (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-primary" />
+          <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Control Rail</span>
         </div>
+        <ThemeToggle />
+      </div>
 
-        <div className="pointer-events-auto glass-panel p-5 rounded-[28px] shadow-2xl border-white/10 backdrop-blur-xl">
-          <Legend />
-        </div>
-
-        {/* Risk Analysis Stats */}
-        {riskStats.totalSegments > 0 && (
-          <div className="pointer-events-auto glass-panel p-5 rounded-[32px] border-white/10 shadow-2xl animate-in fade-in duration-500">
-             <div className="flex items-center justify-between mb-4">
-               <div className="flex items-center gap-2">
-                 <Activity className="h-4 w-4 text-primary" />
-                 <h3 className="text-sm font-black uppercase tracking-wider text-gradient">Area Intelligence</h3>
-               </div>
-               {useRealtimeModel && (
-                 <Badge variant="default" className="rounded-full px-2 py-0.5 text-[9px] font-bold animate-pulse">
-                   REALTIME ML
-                 </Badge>
-               )}
-             </div>
-             
-             <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="space-y-1">
-                  <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Total Segments</span>
-                  <div className="text-lg font-black italic">{riskStats.totalSegments} <span className="text-xs uppercase opacity-60">analyzed</span></div>
-                </div>
-                <div className="space-y-1">
-                  <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Coverage</span>
-                  <div className="text-lg font-black italic">{((riskStats.totalSegments * 0.1).toFixed(1))} <span className="text-xs uppercase opacity-60">km</span></div>
-                </div>
-             </div>
-
-             <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">ML Risk Analysis</span>
-                  <Badge variant={riskStats.maxRisk > 70 ? "destructive" : "secondary"} className="rounded-full px-3">
-                    Priority {riskStats.maxRisk > 70 ? "High" : "Standard"}
-                  </Badge>
-                </div>
-                
-                <div className="space-y-3">
-                  <div className="flex-1 space-y-2">
-                     <div className="flex justify-between text-xs font-bold uppercase tabular-nums">
-                       <span>Peak Risk</span>
-                       <span className={cn(riskStats.maxRisk > 70 ? "text-rose-500" : "text-primary")}>{riskStats.maxRisk}%</span>
-                     </div>
-                     <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                        <div 
-                          className={cn("h-full transition-all duration-1000", riskStats.maxRisk > 70 ? "bg-rose-500" : "bg-primary")} 
-                          style={{ width: `${riskStats.maxRisk}%` }} 
-                        />
-                     </div>
-                  </div>
-                  
-                  <div className="flex-1 space-y-2">
-                     <div className="flex justify-between text-xs font-bold uppercase tabular-nums">
-                       <span>Average Risk</span>
-                       <span className="text-muted-foreground">{riskStats.avgRisk}%</span>
-                     </div>
-                     <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-primary/60 transition-all duration-1000" 
-                          style={{ width: `${riskStats.avgRisk}%` }} 
-                        />
-                     </div>
-                  </div>
-                </div>
-                
-                {/* Risk Distribution */}
-                <div className="bg-slate-900/50 border border-white/5 p-3 rounded-2xl space-y-2">
-                   <div className="text-[10px] font-bold uppercase text-muted-foreground">Risk Distribution</div>
-                   <div className="grid grid-cols-3 gap-2 text-[11px]">
-                     <div>
-                       <div className="text-muted-foreground">Low</div>
-                       <div className="font-bold text-green-400">{riskStats.lowRiskCount}</div>
-                     </div>
-                     <div>
-                       <div className="text-muted-foreground">Medium</div>
-                       <div className="font-bold text-amber-400">{riskStats.mediumRiskCount}</div>
-                     </div>
-                     <div>
-                       <div className="text-muted-foreground">High</div>
-                       <div className="font-bold text-rose-500">{riskStats.highRiskCount}</div>
-                     </div>
-                   </div>
-                </div>
-                
-                {riskStats.topCause && (
-                  <div className="bg-primary/10 border border-primary/20 p-3 rounded-2xl">
-                     <div className="text-[10px] font-bold uppercase text-muted-foreground mb-1">Primary Risk Factor</div>
-                     <div className="text-sm font-bold text-primary capitalize">{riskStats.topCause.replace(/_/g, ' ')}</div>
-                  </div>
-                )}
-                
-                {riskStats.modelFactors && (
-                  <div className="bg-slate-900/50 border border-white/5 p-3 rounded-2xl space-y-2">
-                     <div className="text-[10px] font-bold uppercase text-muted-foreground">Model Factors (Avg)</div>
-                     <div className="grid grid-cols-2 gap-2 text-[11px]">
-                       <div>
-                         <div className="text-muted-foreground">Curvature</div>
-                         <div className="font-bold">{(riskStats.modelFactors.curvature * 100).toFixed(1)}%</div>
-                       </div>
-                       <div>
-                         <div className="text-muted-foreground">Wetness</div>
-                         <div className="font-bold">{(riskStats.modelFactors.surface_wetness_prob * 100).toFixed(0)}%</div>
-                       </div>
-                       <div>
-                         <div className="text-muted-foreground">Wind Speed</div>
-                         <div className="font-bold">{riskStats.modelFactors.wind_speed.toFixed(1)} km/h</div>
-                       </div>
-                       <div>
-                         <div className="text-muted-foreground">Vehicle</div>
-                         <div className="font-bold">{vehicle.toUpperCase()}</div>
-                       </div>
-                     </div>
-                  </div>
-                )}
-
-                {riskStats.maxRisk > 70 && (
-                  <div className="bg-rose-500/10 border border-rose-500/20 p-3 rounded-2xl flex gap-3 items-center">
-                     <AlertTriangle className="h-5 w-5 text-rose-500 animate-pulse" />
-                     <p className="text-[11px] font-bold uppercase text-rose-500 leading-tight">High incident probability detected in this area.</p>
-                  </div>
-                )}
-             </div>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between rounded-2xl border border-primary/15 bg-primary/5 px-3 py-2">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-primary">
+            <Cpu className="h-4 w-4" />
+            <span>{useRealtimeModel ? "Realtime ML" : "Historical"}</span>
           </div>
-        )}
-
-        <div className="pointer-events-auto glass-panel p-5 rounded-[28px] shadow-2xl border-white/10 backdrop-blur-xl max-h-[35vh] overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-          <TopSpotsPanel
-            spots={topSpots}
-            onSelectSpot={(spot) => {
-              setMapCenter({ lat: spot.lat, lng: spot.lon });
-              const segment = segmentsToday.find(
-                (s) => s.properties.segment_id === spot.segment_id
+          <Badge variant={useRealtimeModel ? "default" : "secondary"} className="rounded-full px-2 py-0.5 text-[10px]">
+            {useRealtimeModel ? "Live" : "Cached"}
+          </Badge>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            variant={useRealtimeModel ? "default" : "outline"}
+            className="rounded-2xl"
+            onClick={() => {
+              setUseRealtimeModel(!useRealtimeModel);
+              toast.success(
+                useRealtimeModel
+                  ? "Switched to Historical data"
+                  : "Realtime ML enabled",
+                { duration: 2400 }
               );
-              if (segment) setSelectedSegment(segment);
             }}
-          />
+          >
+            <Cpu className="mr-2 h-4 w-4" />
+            {useRealtimeModel ? "Realtime" : "Historical"}
+          </Button>
+          <Button
+            variant={mockMode ? "default" : "outline"}
+            className="rounded-2xl"
+            onClick={() => {
+              setMockMode(!mockMode);
+              toast.info(mockMode ? "Live mode enabled" : "Mock mode enabled");
+            }}
+          >
+            <Database className="mr-2 h-4 w-4" />
+            {mockMode ? "Mock" : "Live"}
+          </Button>
         </div>
       </div>
+
+      <div className="space-y-4">
+        <div>
+          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-2">
+            <Navigation className="h-3 w-3" />
+            <span>Vehicle & Weather</span>
+          </div>
+          <div className="space-y-3">
+            <VehicleSelect value={vehicle} onChange={setVehicle} />
+            <WeatherPanel location={mapCenter} />
+          </div>
+        </div>
+
+        <div>
+          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-2">
+            <Clock className="h-3 w-3" />
+            <span>Time & Style</span>
+          </div>
+          <div className="space-y-3 rounded-2xl border border-white/5 bg-slate-900/40 p-3">
+            <HourSlider value={hour} onChange={setHour} />
+            <MapStyleSelector value={mapStyle} onChange={setMapStyle} />
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-1">
+            <SlidersHorizontal className="h-3 w-3" />
+            <span>Visualization</span>
+          </div>
+          <RiskVisualizationToggle mode={visualizationMode} onChange={setVisualizationMode} />
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3 space-y-2">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Utilities</div>
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="secondary" className="rounded-2xl" onClick={resetToNow}>
+            <Clock className="mr-2 h-4 w-4" />
+            Now
+          </Button>
+          <Button variant="secondary" className="rounded-2xl" onClick={() => setMapCenter(config.domain.center)}>
+            <MapPin className="mr-2 h-4 w-4" />
+            Recenter
+          </Button>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3">
+        <Legend />
+      </div>
+    </div>
+  );
+
+  const AreaPulse = () => (
+    <div className="pointer-events-auto glass-panel p-5 rounded-[28px] border-white/10 shadow-2xl space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Activity className="h-4 w-4 text-primary" />
+          <h3 className="text-sm font-black uppercase tracking-[0.2em] text-gradient">Area Pulse</h3>
+        </div>
+        {useRealtimeModel && (
+          <Badge variant="default" className="rounded-full px-2 py-0.5 text-[10px]">Realtime</Badge>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Peak</span>
+          <div className={cn("text-xl font-black", riskStats.maxRisk > 70 ? "text-rose-500" : "text-primary")}>{riskStats.maxRisk}%</div>
+        </div>
+        <div className="space-y-1">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Average</span>
+          <div className="text-xl font-black">{riskStats.avgRisk}%</div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2 text-[11px]">
+        <div className="rounded-xl border border-white/5 bg-slate-900/50 p-2">
+          <div className="text-muted-foreground">Low</div>
+          <div className="font-bold text-emerald-400">{riskStats.lowRiskCount}</div>
+        </div>
+        <div className="rounded-xl border border-white/5 bg-slate-900/50 p-2">
+          <div className="text-muted-foreground">Medium</div>
+          <div className="font-bold text-amber-400">{riskStats.mediumRiskCount}</div>
+        </div>
+        <div className="rounded-xl border border-white/5 bg-slate-900/50 p-2">
+          <div className="text-muted-foreground">High</div>
+          <div className="font-bold text-rose-500">{riskStats.highRiskCount}</div>
+        </div>
+      </div>
+
+      {riskStats.topCause && (
+        <div className="rounded-2xl border border-primary/20 bg-primary/10 p-3">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-1">Top Cause</div>
+          <div className="text-sm font-bold capitalize text-primary">{riskStats.topCause.replace(/_/g, " ")}</div>
+        </div>
+      )}
+
+      {riskStats.maxRisk > 70 && (
+        <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-3 flex items-center gap-3">
+          <AlertTriangle className="h-4 w-4 text-rose-500" />
+          <p className="text-[11px] font-semibold uppercase text-rose-500">High incident probability detected</p>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="relative flex h-full w-full overflow-hidden bg-slate-950">
+      {/* Quick bar */}
+      <div className="absolute top-4 left-4 right-4 z-20 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between pointer-events-none">
+        <div className="flex flex-wrap gap-2 pointer-events-auto">
+          <Button
+            variant={useRealtimeModel ? "default" : "outline"}
+            size="sm"
+            className="rounded-full px-4"
+            onClick={() => {
+              setUseRealtimeModel(!useRealtimeModel);
+              toast.success(useRealtimeModel ? "Historical data" : "Realtime ML enabled", { duration: 2000 });
+            }}
+          >
+            <Cpu className="mr-2 h-4 w-4" />
+            {useRealtimeModel ? "Realtime" : "Historical"}
+          </Button>
+          <Button
+            variant={mockMode ? "default" : "outline"}
+            size="sm"
+            className="rounded-full px-4"
+            onClick={() => {
+              setMockMode(!mockMode);
+              toast.info(mockMode ? "Live mode" : "Mock mode");
+            }}
+          >
+            <Database className="mr-2 h-4 w-4" />
+            {mockMode ? "Mock" : "Live"}
+          </Button>
+          <Button variant="secondary" size="sm" className="rounded-full" onClick={resetToNow}>
+            <Clock className="mr-2 h-4 w-4" />
+            Now
+          </Button>
+          <Button variant="secondary" size="sm" className="rounded-full" onClick={() => setMapCenter(config.domain.center)}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Recenter
+          </Button>
+        </div>
+
+        <div className="flex items-center gap-2 pointer-events-auto">
+          <Badge variant="secondary" className="rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.16em]">
+            {riskStats.totalSegments} segments
+          </Badge>
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="sm" className="rounded-full">
+                <SlidersHorizontal className="mr-2 h-4 w-4" />
+                Controls
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-full sm:w-96 overflow-y-auto">
+              <div className="py-4">
+                <ControlsPanel />
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
+      </div>
+
+      {/* Right rail for desktop */}
+      <aside className="hidden xl:block absolute top-4 right-4 bottom-4 z-10 w-96 pointer-events-none">
+        <div className="pointer-events-auto glass-panel h-full rounded-[32px] border-white/10 shadow-2xl overflow-y-auto p-5">
+          <ControlsPanel />
+        </div>
+      </aside>
 
       {/* Map Main */}
       <main className="flex-1 relative">
@@ -397,6 +373,16 @@ export default function MapOverview() {
             </div>
           </div>
         )}
+
+        {!isLoading && riskStats.totalSegments === 0 && (
+          <div className="absolute top-24 left-1/2 -translate-x-1/2 z-10">
+            <div className="glass-panel px-6 py-4 rounded-2xl border-dashed border-white/20 text-center max-w-sm">
+              <div className="text-sm font-semibold">No risk data visible for this view.</div>
+              <p className="text-xs text-muted-foreground mt-1">Move the map or switch to historical mode to load more coverage.</p>
+            </div>
+          </div>
+        )}
+
         <MapWeb
           center={mapCenter}
           segments={segmentsToday}
@@ -404,16 +390,28 @@ export default function MapOverview() {
           onSegmentClick={setSelectedSegment}
           onCenterChange={setMapCenter}
         />
+
+        {/* Area pulse + spots (desktop) */}
+        <div className="hidden lg:flex flex-col gap-3 absolute bottom-4 left-4 z-10 w-[360px] pointer-events-none">
+          {riskStats.totalSegments > 0 && <AreaPulse />}
+          <div className="pointer-events-auto glass-panel p-4 rounded-[28px] border-white/10 shadow-2xl max-h-[32vh] overflow-y-auto">
+            <TopSpotsPanel
+              spots={topSpots}
+              onSelectSpot={(spot) => {
+                setMapCenter({ lat: spot.lat, lng: spot.lon });
+                const segment = segmentsToday.find((s) => s.properties.segment_id === spot.segment_id);
+                if (segment) setSelectedSegment(segment);
+              }}
+            />
+          </div>
+        </div>
       </main>
 
       {/* Dynamic Inspector Overlay */}
       {selectedSegment && (
-        <div className="absolute top-4 lg:top-6 right-4 lg:right-6 bottom-4 lg:bottom-6 z-10 w-[360px] max-w-[calc(100vw-2rem)] flex flex-col pointer-events-none animate-in slide-in-from-right duration-500">
-          <div className="pointer-events-auto glass-panel p-6 rounded-[32px] border-white/10 shadow-2xl backdrop-blur-xl overflow-y-auto max-h-full scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-            <SegmentInfoCard
-              segment={selectedSegment}
-              onClose={() => setSelectedSegment(null)}
-            />
+        <div className="absolute top-4 lg:top-6 right-4 lg:right-6 bottom-4 lg:bottom-6 z-20 w-[360px] max-w-[calc(100vw-2rem)] flex flex-col pointer-events-none animate-in slide-in-from-right duration-500">
+          <div className="pointer-events-auto glass-panel p-6 rounded-[32px] border-white/10 shadow-2xl backdrop-blur-xl overflow-y-auto max-h-full">
+            <SegmentInfoCard segment={selectedSegment} onClose={() => setSelectedSegment(null)} />
           </div>
         </div>
       )}

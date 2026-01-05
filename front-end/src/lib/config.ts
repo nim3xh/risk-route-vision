@@ -6,7 +6,7 @@ export const config = {
   timezone: import.meta.env.VITE_TIMEZONE || "Asia/Colombo",
   useMockApi: import.meta.env.VITE_USE_MOCK_API === "true" || !import.meta.env.VITE_API_BASE,
   
-  // Prediction area centered at 6.9893° N, 80.4927° E
+  // Prediction area centered at Ginigathhena (6.9893° N, 80.4927° E)
   domain: {
     center: { lat: 6.9893, lng: 80.4927 },
     bounds: {

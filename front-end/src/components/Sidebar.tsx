@@ -1,10 +1,9 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { 
-  Map as MapIcon, 
-  Navigation, 
-  Activity, 
-  Settings, 
+import {
+  Map as MapIcon,
+  Navigation,
+  Activity,
   ShieldAlert,
   ChevronRight,
   Info,
@@ -13,7 +12,14 @@ import {
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./ThemeToggle";
 
-const navItems = [
+export type NavItem = {
+  title: string;
+  path: string;
+  icon: React.ComponentType<{ className?: string }>;
+  description?: string;
+};
+
+export const NAV_ITEMS: NavItem[] = [
   {
     title: "Map Overview",
     path: "/",
@@ -40,7 +46,11 @@ const navItems = [
   }
 ];
 
-export const Sidebar = () => {
+interface SidebarProps {
+  navItems?: NavItem[];
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ navItems = NAV_ITEMS }) => {
   const location = useLocation();
 
   return (

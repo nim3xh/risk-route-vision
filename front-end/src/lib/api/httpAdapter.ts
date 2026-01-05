@@ -221,23 +221,31 @@ class HttpAdapter {
       params.is_wet = weather.is_wet.toString();
     }
 
-    const response = await this.client.get<SegmentsTodayResponse>(
-      "/risk/segments/today",
-      { params }
-    );
+    try {
+      console.log('[API] Fetching segments/today with params:', params);
+      const response = await this.client.get<SegmentsTodayResponse>(
+        "/risk/segments/today",
+        { params }
+      );
 
-    // Transform backend response to frontend format
-    const data = response.data;
-    return {
-      type: "FeatureCollection",
-      features: data.features.map(feature => ({
-        ...feature,
-        properties: {
-          ...feature.properties,
-          vehicle: unmapVehicleType(feature.properties.vehicle),
-        }
-      }))
-    };
+      console.log('[API] Received segments:', response.data.features?.length || 0);
+      
+      // Transform backend response to frontend format
+      const data = response.data;
+      return {
+        type: "FeatureCollection",
+        features: data.features.map(feature => ({
+          ...feature,
+          properties: {
+            ...feature.properties,
+            vehicle: unmapVehicleType(feature.properties.vehicle),
+          }
+        }))
+      };
+    } catch (error) {
+      console.error('[API] Error fetching segments/today:', error);
+      throw error;
+    }
   }
 
   async getSegmentsRealtime(
@@ -271,23 +279,31 @@ class HttpAdapter {
       params.is_wet = weather.is_wet.toString();
     }
 
-    const response = await this.client.get<SegmentsTodayResponse>(
-      "/risk/segments/realtime",
-      { params }
-    );
+    try {
+      console.log('[API] Fetching segments/realtime with params:', params);
+      const response = await this.client.get<SegmentsTodayResponse>(
+        "/risk/segments/realtime",
+        { params }
+      );
 
-    // Transform backend response to frontend format
-    const data = response.data;
-    return {
-      type: "FeatureCollection",
-      features: data.features.map(feature => ({
-        ...feature,
-        properties: {
-          ...feature.properties,
-          vehicle: unmapVehicleType(feature.properties.vehicle),
-        }
-      }))
-    };
+      console.log('[API] Received realtime segments:', response.data.features?.length || 0);
+      
+      // Transform backend response to frontend format
+      const data = response.data;
+      return {
+        type: "FeatureCollection",
+        features: data.features.map(feature => ({
+          ...feature,
+          properties: {
+            ...feature.properties,
+            vehicle: unmapVehicleType(feature.properties.vehicle),
+          }
+        }))
+      };
+    } catch (error) {
+      console.error('[API] Error fetching segments/realtime:', error);
+      throw error;
+    }
   }
 
   async getTopSpots(vehicle?: Vehicle, limit: number = 10): Promise<TopSpot[]> {

@@ -199,7 +199,17 @@ async def nearby(req: NearbyRequest):
                 "Location is outside Ginigathena service area. Risk analysis is only available within Ginigathena."
             )
         
+        # Generate nearby coordinates for analysis - ensure they stay within bounds
         coords = [[lat, lon],[lat+0.0009, lon+0.0009],[lat+0.0018, lon+0.0018]]
+        
+        # Filter to keep only coordinates within Ginigathena
+        coords = [c for c in coords if is_within_ginigathena(c[0], c[1])]
+        
+        if len(coords) < 2:
+            raise HTTPException(
+                400, 
+                "Location too close to service area boundary. Unable to generate nearby analysis points within Ginigathena."
+            )
         
         # Get weather data - MANUAL or LIVE
         if req.weather:
@@ -440,7 +450,7 @@ async def get_segments_realtime(
     if bbox_tuple:
         min_lon, min_lat, max_lon, max_lat = bbox_tuple
     else:
-        min_lon, min_lat, max_lon, max_lat = (80.43, 6.92, 80.49, 6.97)
+        min_lon, min_lat, max_lon, max_lat = (80.48, 6.97, 80.51, 7.01)  # Default Ginigathhena area
     
     center_lat = (min_lat + max_lat) / 2
     center_lon = (min_lon + max_lon) / 2

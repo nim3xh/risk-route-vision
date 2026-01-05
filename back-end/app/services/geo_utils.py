@@ -5,11 +5,12 @@ from typing import List, Tuple
 
 # Ginigathena bounding box coordinates (approximate)
 # These define the service area for risk analysis
+# Centered at approximately 6.9893° N, 80.4927° E
 GINIGATHENA_BOUNDS = {
-    "min_lat": 7.0,    # Southern boundary
-    "max_lat": 7.5,    # Northern boundary
-    "min_lon": 80.4,   # Western boundary
-    "max_lon": 80.9    # Eastern boundary
+    "min_lat": 6.95,   # Southern boundary
+    "max_lat": 7.05,   # Northern boundary
+    "min_lon": 80.45,  # Western boundary
+    "max_lon": 80.55   # Eastern boundary
 }
 
 

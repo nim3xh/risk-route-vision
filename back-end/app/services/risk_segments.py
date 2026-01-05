@@ -120,9 +120,9 @@ def generate_risk_segments(
     """
     from ..ml.model import predict_with_cause
     
-    # Default bounding box (Colombo area)
+    # Default bounding box (Ginigathhena area centered at 6.9893, 80.4927)
     if bbox is None:
-        bbox = (80.43, 6.94, 80.55, 7.03)
+        bbox = (80.48, 6.97, 80.51, 7.01)  # ~3-4 km coverage
     
     # Default hour (current hour)
     if hour is None:
