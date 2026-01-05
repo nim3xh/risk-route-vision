@@ -5,9 +5,10 @@ import { Clock } from "lucide-react";
 interface HourSliderProps {
   value: number;
   onChange: (value: number) => void;
+  onCommit?: (value: number) => void;
 }
 
-export function HourSlider({ value, onChange }: HourSliderProps) {
+export function HourSlider({ value, onChange, onCommit }: HourSliderProps) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
@@ -22,6 +23,7 @@ export function HourSlider({ value, onChange }: HourSliderProps) {
       <Slider
         value={[value]}
         onValueChange={([v]) => onChange(v)}
+        onValueCommit={([v]) => onCommit?.(v)}
         min={0}
         max={23}
         step={1}

@@ -9,6 +9,7 @@ import {
 } from "@/types";
 import { bboxToString } from "@/lib/geo/bbox";
 import { config } from "@/lib/config";
+import { mockGetSegmentsToday } from "./mockAdapter";
 
 // Map frontend vehicle types to backend vehicle types
 function mapVehicleType(vehicle: Vehicle): string {
@@ -42,7 +43,7 @@ class HttpAdapter {
   constructor(baseURL: string) {
     this.client = axios.create({
       baseURL,
-      timeout: 30000, // Increased to 30 seconds for grid generation
+      timeout: 12000, // Keep responsive; backend has its own fallbacks
       headers: {
         "Content-Type": "application/json",
       },

@@ -1,41 +1,85 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRiskStore } from "@/store/useRiskStore";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { Thermometer, Droplets, Wind, CloudRain, Radio, Settings2, RefreshCcw } from "lucide-react";
+import { Thermometer, Wind, CloudRain, Radio, Settings2, RefreshCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { riskApi } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { config } from "@/lib/config";
 
 interface WeatherPanelProps {
   location?: { lat: number; lng: number };
 }
 
-export function WeatherPanel({ location }: WeatherPanelProps) {
+export function WeatherPanel({ location: _location }: WeatherPanelProps) {
   const { weather, setWeather, weatherMode, setWeatherMode, liveWeather, setLiveWeather } = useRiskStore();
   const [isSyncing, setIsSyncing] = useState(false);
+  const [tempLocal, setTempLocal] = useState(weather.temperature_c);
+  const [humidityLocal, setHumidityLocal] = useState(weather.humidity_pct);
+  const [windLocal, setWindLocal] = useState(weather.wind_kmh);
+  const commitTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const fetchedOnceRef = useRef(false); // Prevent duplicate fetches (React strict mode)
+  const lastFetchRef = useRef(0); // Simple throttle to avoid rapid repeats
+  const syncingRef = useRef(false); // Guard concurrent fetches
 
-  const fetchLiveWeather = async () => {
-    if (!location) return;
+  const targetLocation = config.domain.center; // Pin weather to Ginigathhena domain center
+
+  const fetchLiveWeather = useCallback(async (opts?: { force?: boolean }) => {
+    if (syncingRef.current && !opts?.force) return;
+
+    const now = Date.now();
+    if (!opts?.force && now - lastFetchRef.current < 8000) {
+      return; // Throttle duplicate calls (e.g., StrictMode or rapid toggles)
+    }
+
+    syncingRef.current = true;
     setIsSyncing(true);
     try {
-      const data = await riskApi.getWeather(location.lat, location.lng);
+      const data = await riskApi.getWeather(targetLocation.lat, targetLocation.lng);
       setLiveWeather(data);
+      lastFetchRef.current = Date.now();
     } catch (err) {
       toast.error("Failed to fetch live weather");
     } finally {
+      syncingRef.current = false;
       setIsSyncing(false);
+    }
+  }, [setLiveWeather, targetLocation.lat, targetLocation.lng]);
+
+  useEffect(() => {
+    if (weatherMode === "live" && !fetchedOnceRef.current) {
+      fetchedOnceRef.current = true;
+      fetchLiveWeather();
+    }
+
+    if (weatherMode === "manual") {
+      fetchedOnceRef.current = false;
+    }
+  }, [fetchLiveWeather, weatherMode]);
+
+  const activeWeather = weatherMode === "live" ? liveWeather || weather : weather;
+
+  const ensureManual = () => {
+    if (weatherMode === "live") {
+      setWeatherMode("manual");
     }
   };
 
-  useEffect(() => {
-    if (weatherMode === "live" && location) {
-      fetchLiveWeather();
-    }
-  }, [location?.lat, location?.lng, weatherMode]);
+  const scheduleCommit = (partial: Partial<typeof weather>) => {
+    ensureManual();
+    if (commitTimerRef.current) clearTimeout(commitTimerRef.current);
+    commitTimerRef.current = setTimeout(() => {
+      setWeather(partial);
+    }, 350); // trailing commit while dragging
+  };
 
-  const activeWeather = weatherMode === "live" ? liveWeather || weather : weather;
+  useEffect(() => {
+    setTempLocal(weather.temperature_c);
+    setHumidityLocal(weather.humidity_pct);
+    setWindLocal(weather.wind_kmh);
+  }, [weather.temperature_c, weather.humidity_pct, weather.wind_kmh, weather.is_wet]);
 
   return (
     <div className="space-y-4">
@@ -68,12 +112,16 @@ export function WeatherPanel({ location }: WeatherPanelProps) {
             variant="ghost" 
             size="icon" 
             className="h-8 w-8 rounded-full hover:bg-white/10"
-            onClick={fetchLiveWeather}
-            disabled={isSyncing || !location}
+            onClick={() => fetchLiveWeather({ force: true })}
+            disabled={isSyncing}
           >
             <RefreshCcw className={cn("h-3 w-3", isSyncing && "animate-spin")} />
           </Button>
         )}
+      </div>
+
+      <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+        Using Ginigathhena live weather
       </div>
 
       <div className={cn("grid grid-cols-1 gap-4 transition-all duration-500", weatherMode === "live" && "opacity-80")}>
@@ -88,11 +136,18 @@ export function WeatherPanel({ location }: WeatherPanelProps) {
           </div>
           {weatherMode === "manual" ? (
             <Slider
-              value={[weather.temperature_c]}
+              value={[tempLocal]}
               min={10}
               max={45}
               step={1}
-              onValueChange={([val]) => setWeather({ temperature_c: val })}
+              onValueChange={([val]) => {
+                setTempLocal(val);
+                scheduleCommit({ temperature_c: val });
+              }}
+              onValueCommit={([val]) => {
+                setTempLocal(val);
+                setWeather({ temperature_c: val });
+              }}
               className="[&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_[role=slider]]:border-primary"
             />
           ) : (
@@ -114,11 +169,18 @@ export function WeatherPanel({ location }: WeatherPanelProps) {
             </div>
             {weatherMode === "manual" ? (
               <Slider
-                value={[weather.humidity_pct]}
+                value={[humidityLocal]}
                 min={0}
                 max={100}
                 step={5}
-                onValueChange={([val]) => setWeather({ humidity_pct: val })}
+                onValueChange={([val]) => {
+                  setHumidityLocal(val);
+                  scheduleCommit({ humidity_pct: val });
+                }}
+                onValueCommit={([val]) => {
+                  setHumidityLocal(val);
+                  setWeather({ humidity_pct: val });
+                }}
                 className="[&_[role=slider]]:h-2.5 [&_[role=slider]]:w-2.5"
               />
             ) : (
@@ -139,11 +201,18 @@ export function WeatherPanel({ location }: WeatherPanelProps) {
             </div>
             {weatherMode === "manual" ? (
               <Slider
-                value={[weather.wind_kmh]}
+                value={[windLocal]}
                 min={0}
                 max={80}
                 step={2}
-                onValueChange={([val]) => setWeather({ wind_kmh: val })}
+                onValueChange={([val]) => {
+                  setWindLocal(val);
+                  scheduleCommit({ wind_kmh: val });
+                }}
+                onValueCommit={([val]) => {
+                  setWindLocal(val);
+                  setWeather({ wind_kmh: val });
+                }}
                 className="[&_[role=slider]]:h-2.5 [&_[role=slider]]:w-2.5"
               />
             ) : (
@@ -173,8 +242,10 @@ export function WeatherPanel({ location }: WeatherPanelProps) {
           </div>
           <Switch 
             checked={activeWeather.is_wet === 1}
-            onCheckedChange={(checked) => weatherMode === "manual" && setWeather({ is_wet: checked ? 1 : 0 })}
-            disabled={weatherMode === "live"}
+            onCheckedChange={(checked) => {
+              ensureManual();
+              setWeather({ is_wet: checked ? 1 : 0 });
+            }}
             className="data-[state=checked]:bg-blue-500"
           />
         </div>

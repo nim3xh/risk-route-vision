@@ -154,5 +154,38 @@ async def get_openmeteo_data(lat: float, lon: float):
             "provider": "openmeteo",
             "timestamp": datetime.utcnow().isoformat()
         }
+    except httpx.HTTPStatusError as e:
+        # Gracefully fall back to a safe default instead of 500s so the UI keeps working
+        return {
+            "temperature_c": 28.0,
+            "humidity_pct": 70.0,
+            "precip_mm": 0.0,
+            "wind_kmh": 10.0,
+            "wind_deg": 0.0,
+            "clouds_pct": 0,
+            "weather_code": 0,
+            "weather_main": "Clear",
+            "weather_description": "fallback default",
+            "weather_icon": "01d",
+            "is_wet": 0,
+            "provider": "openmeteo-fallback",
+            "timestamp": datetime.utcnow().isoformat(),
+            "error": f"openmeteo status {e.response.status_code}"
+        }
     except Exception as e:
-        raise HTTPException(500, f"Weather service error: {str(e)}")
+        return {
+            "temperature_c": 28.0,
+            "humidity_pct": 70.0,
+            "precip_mm": 0.0,
+            "wind_kmh": 10.0,
+            "wind_deg": 0.0,
+            "clouds_pct": 0,
+            "weather_code": 0,
+            "weather_main": "Clear",
+            "weather_description": "fallback default",
+            "weather_icon": "01d",
+            "is_wet": 0,
+            "provider": "openmeteo-fallback",
+            "timestamp": datetime.utcnow().isoformat(),
+            "error": str(e)
+        }

@@ -189,7 +189,7 @@ def load_xgboost_model(model_path: Optional[str] = None):
         try:
             print(f"[Info] Attempting to load XGBoost model from {model_path}")
             _XGB_MODEL = joblib.load(model_path)
-            print(f"[Info] ✅ Loaded XGBoost model successfully!")
+            print("[Info] Loaded XGBoost model successfully")
             return _XGB_MODEL
         except Exception as e:
             print(f"[Error] Failed to load XGBoost model from {model_path}: {e}")
@@ -224,7 +224,7 @@ def load_cause_classifier(model_path: Optional[str] = None):
             print(f"[Info] Attempting to load Cause Classifier from {model_path}")
             # Sklearn pipelines don't usually need custom classes for loading if standard components are used
             _CAUSE_MODEL = joblib.load(model_path)
-            print(f"[Info] ✅ Loaded Cause Classifier successfully!")
+            print("[Info] Loaded Cause Classifier successfully")
             return _CAUSE_MODEL
         except Exception as e:
             print(f"[Error] Failed to load Cause Classifier from {model_path}: {e}")

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MapWebNative as MapWeb } from "@/components/MapWebNative";
 import { HourSlider } from "@/components/HourSlider";
 import { VehicleSelect } from "@/components/VehicleSelect";
@@ -23,8 +23,9 @@ import { cn } from "@/lib/utils";
 export default function MapOverview() {
   const [visualizationMode, setVisualizationMode] = useState<VisualizationMode>("labels");
   const [useRealtimeModel, setUseRealtimeModel] = useState(false); // Toggle for realtime ML model
-  const { weather: storeWeather, weatherMode, liveWeather, getActiveWeather } = useRiskStore();
   const { hour, vehicle, mockMode, mapCenter, mapStyle, setHour, setVehicle, setMockMode, setMapCenter, setMapStyle, resetToNow } = useUiStore();
+  const [hourLocal, setHourLocal] = useState(hour); // Smooth hour slider state
+  const { weather: storeWeather, weatherMode, liveWeather, getActiveWeather } = useRiskStore();
   const {
     segmentsToday,
     selectedSegment,
@@ -36,6 +37,9 @@ export default function MapOverview() {
     setLoading,
     setError,
   } = useRiskStore();
+
+  const requestIdRef = useRef(0); // Guards against stale in-flight requests
+  const hourCommitRef = useRef<NodeJS.Timeout | null>(null);
 
   // Risk statistics
   const getRiskStats = () => {
@@ -87,14 +91,59 @@ export default function MapOverview() {
     };
   };
 
+  // Derive a local leaderboard from the currently visible segments so it always matches the latest risk fetch (weather/time/vehicle aware).
+  const deriveTopSpots = (features: typeof segmentsToday, limit: number = 10) => {
+    return [...features]
+      .filter((f) => typeof f?.properties?.risk_0_100 === "number")
+      .sort((a, b) => b.properties.risk_0_100 - a.properties.risk_0_100)
+      .slice(0, limit)
+      .map((feature) => {
+        const coords = feature.geometry.type === "LineString"
+          ? (feature.geometry.coordinates[0] as number[])
+          : (feature.geometry.coordinates as number[]);
+        const [lon, lat] = coords || [config.domain.center.lng, config.domain.center.lat];
+        return {
+          segment_id: feature.properties.segment_id,
+          lat,
+          lon,
+          risk_0_100: feature.properties.risk_0_100,
+          rate_pred: feature.properties.rate_pred,
+          vehicle: feature.properties.vehicle,
+          hour: feature.properties.hour,
+          top_cause: feature.properties.top_cause,
+        };
+      });
+  };
+
   const riskStats = useMemo(() => getRiskStats(), [segmentsToday]);
 
   useEffect(() => {
-    loadData();
+    const handle = setTimeout(() => {
+      loadData();
+    }, 400); // Slightly quicker to reflect weather changes while still avoiding spam during drags
+
+    return () => clearTimeout(handle);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hour, vehicle, mockMode, storeWeather, weatherMode, liveWeather, useRealtimeModel]);
 
+  useEffect(() => {
+    setHourLocal(hour);
+  }, [hour]);
+
+  const handleHourChange = (val: number) => {
+    setHourLocal(val);
+    if (hourCommitRef.current) clearTimeout(hourCommitRef.current);
+    hourCommitRef.current = setTimeout(() => setHour(val), 250);
+  };
+
+  const handleHourCommit = (val: number) => {
+    if (hourCommitRef.current) clearTimeout(hourCommitRef.current);
+    setHourLocal(val);
+    setHour(val);
+  };
+
   const loadData = async () => {
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
     try {
@@ -113,11 +162,15 @@ export default function MapOverview() {
         riskApi.getTopSpots(vehicle, 10),
       ]);
       
+      if (requestId !== requestIdRef.current) return; // Drop stale responses
+
       console.log('Loaded segments:', segments.features?.length || 0);
       console.log('Loaded spots:', spots?.length || 0);
       
       setSegmentsToday(segments.features);
-      setTopSpots(spots);
+      // Prefer derived leaderboard so it always matches current weather/time; fall back to API if empty
+      const derived = deriveTopSpots(segments.features, 10);
+      setTopSpots(derived.length > 0 ? derived : spots);
       
       if (segments.features.length === 0) {
         toast.info("No risk data available for this area. Try adjusting the map view.", { duration: 3000 });
@@ -125,10 +178,14 @@ export default function MapOverview() {
     } catch (err) {
       console.error('Error loading data:', err);
       const message = err instanceof Error ? err.message : "Failed to load data";
-      setError(message);
-      toast.error(message);
+      if (requestId === requestIdRef.current) {
+        setError(message);
+        toast.error(message);
+      }
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -201,7 +258,11 @@ export default function MapOverview() {
             <span>Time & Style</span>
           </div>
           <div className="space-y-3 rounded-2xl border border-white/5 bg-slate-900/40 p-3">
-            <HourSlider value={hour} onChange={setHour} />
+            <HourSlider
+              value={hourLocal}
+              onChange={handleHourChange}
+              onCommit={handleHourCommit}
+            />
             <MapStyleSelector value={mapStyle} onChange={setMapStyle} />
           </div>
         </div>
