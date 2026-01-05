@@ -19,10 +19,10 @@ import { toast } from "sonner";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { SegmentFeature } from "@/types";
 
 export default function MapOverview() {
   const [visualizationMode, setVisualizationMode] = useState<VisualizationMode>("labels");
-  const [useRealtimeModel, setUseRealtimeModel] = useState(false); // Toggle for realtime ML model
   const { hour, vehicle, mockMode, mapCenter, mapStyle, setHour, setVehicle, setMockMode, setMapCenter, setMapStyle, resetToNow } = useUiStore();
   const [hourLocal, setHourLocal] = useState(hour); // Smooth hour slider state
   const { weather: storeWeather, weatherMode, liveWeather, getActiveWeather } = useRiskStore();
@@ -115,6 +115,56 @@ export default function MapOverview() {
       });
   };
 
+  const mergeSegments = (historical: SegmentFeature[], realtime: SegmentFeature[]) => {
+    const merged = new Map<string, SegmentFeature>();
+
+    historical.forEach((segment) => {
+      merged.set(segment.properties.segment_id, {
+        ...segment,
+        properties: {
+          ...segment.properties,
+          risk_historical: segment.properties.risk_0_100,
+          model_source: "historical",
+        },
+      });
+    });
+
+    realtime.forEach((segment) => {
+      const existing = merged.get(segment.properties.segment_id);
+      if (existing) {
+        const riskHistorical = existing.properties.risk_historical ?? existing.properties.risk_0_100;
+        const riskRealtime = segment.properties.risk_0_100;
+        const mergedRisk = (riskHistorical + riskRealtime) / 2; // consider both model outputs equally
+
+        merged.set(segment.properties.segment_id, {
+          ...existing,
+          geometry: existing.geometry || segment.geometry,
+          properties: {
+            ...existing.properties,
+            ...segment.properties,
+            risk_historical: riskHistorical,
+            risk_realtime: riskRealtime,
+            risk_0_100: mergedRisk,
+            model_source: "blended",
+          },
+        });
+      } else {
+        merged.set(segment.properties.segment_id, {
+          ...segment,
+          properties: {
+            ...segment.properties,
+            risk_historical: undefined,
+            risk_realtime: segment.properties.risk_0_100,
+            risk_0_100: segment.properties.risk_0_100,
+            model_source: "realtime",
+          },
+        });
+      }
+    });
+
+    return Array.from(merged.values());
+  };
+
   const riskStats = useMemo(() => getRiskStats(), [segmentsToday]);
 
   useEffect(() => {
@@ -124,7 +174,7 @@ export default function MapOverview() {
 
     return () => clearTimeout(handle);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hour, vehicle, mockMode, storeWeather, weatherMode, liveWeather, useRealtimeModel]);
+  }, [hour, vehicle, mockMode, storeWeather, weatherMode, liveWeather]);
 
   useEffect(() => {
     setHourLocal(hour);
@@ -147,32 +197,46 @@ export default function MapOverview() {
     setLoading(true);
     setError(null);
     try {
-      console.log('Loading data with params:', { hour, vehicle, mockMode, useRealtimeModel });
+      console.log('Loading data with params:', { hour, vehicle, mockMode });
       riskApi.setMockMode(mockMode);
       const activeWeather = getActiveWeather();
       console.log('Active weather:', activeWeather);
       
-      // Choose between historical (fast, cached) and realtime (ML-based) predictions
-      const segmentsPromise = useRealtimeModel 
-        ? riskApi.getSegmentsRealtime(config.domain.bounds, hour, vehicle, activeWeather)
-        : riskApi.getSegmentsToday(config.domain.bounds, hour, vehicle, activeWeather);
-      
-      const [segments, spots] = await Promise.all([
-        segmentsPromise,
+      const [historicalResult, realtimeResult, spotsResult] = await Promise.allSettled([
+        riskApi.getSegmentsToday(config.domain.bounds, hour, vehicle, activeWeather),
+        riskApi.getSegmentsRealtime(config.domain.bounds, hour, vehicle, activeWeather),
         riskApi.getTopSpots(vehicle, 10),
       ]);
-      
+
       if (requestId !== requestIdRef.current) return; // Drop stale responses
 
-      console.log('Loaded segments:', segments.features?.length || 0);
+      const historicalSegments = historicalResult.status === "fulfilled" ? historicalResult.value.features : [];
+      const realtimeSegments = realtimeResult.status === "fulfilled" ? realtimeResult.value.features : [];
+      const spots = spotsResult.status === "fulfilled" ? spotsResult.value : [];
+
+      if (historicalResult.status === "rejected") {
+        console.warn('Historical risk load failed:', historicalResult.reason);
+      }
+      if (realtimeResult.status === "rejected") {
+        console.warn('Realtime risk load failed:', realtimeResult.reason);
+      }
+
+      if (historicalSegments.length === 0 && realtimeSegments.length === 0) {
+        throw new Error("No risk data available from realtime or historical models");
+      }
+
+      console.log('Loaded historical segments:', historicalSegments.length);
+      console.log('Loaded realtime segments:', realtimeSegments.length);
       console.log('Loaded spots:', spots?.length || 0);
-      
-      setSegmentsToday(segments.features);
+
+      const blendedSegments = mergeSegments(historicalSegments, realtimeSegments);
+      setSegmentsToday(blendedSegments);
+
       // Prefer derived leaderboard so it always matches current weather/time; fall back to API if empty
-      const derived = deriveTopSpots(segments.features, 10);
+      const derived = deriveTopSpots(blendedSegments, 10);
       setTopSpots(derived.length > 0 ? derived : spots);
       
-      if (segments.features.length === 0) {
+      if (blendedSegments.length === 0) {
         toast.info("No risk data available for this area. Try adjusting the map view.", { duration: 3000 });
       }
     } catch (err) {
@@ -203,29 +267,10 @@ export default function MapOverview() {
         <div className="flex items-center justify-between rounded-2xl border border-primary/15 bg-primary/5 px-3 py-2">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-primary">
             <Cpu className="h-4 w-4" />
-            <span>{useRealtimeModel ? "Realtime ML" : "Historical"}</span>
+            <span>Risk Display</span>
           </div>
-          <Badge variant={useRealtimeModel ? "default" : "secondary"} className="rounded-full px-2 py-0.5 text-[10px]">
-            {useRealtimeModel ? "Live" : "Cached"}
-          </Badge>
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            variant={useRealtimeModel ? "default" : "outline"}
-            className="rounded-2xl"
-            onClick={() => {
-              setUseRealtimeModel(!useRealtimeModel);
-              toast.success(
-                useRealtimeModel
-                  ? "Switched to Historical data"
-                  : "Realtime ML enabled",
-                { duration: 2400 }
-              );
-            }}
-          >
-            <Cpu className="mr-2 h-4 w-4" />
-            {useRealtimeModel ? "Realtime" : "Historical"}
-          </Button>
+        <div className="grid grid-cols-1 gap-2">
           <Button
             variant={mockMode ? "default" : "outline"}
             className="rounded-2xl"
@@ -303,9 +348,6 @@ export default function MapOverview() {
           <Activity className="h-4 w-4 text-primary" />
           <h3 className="text-sm font-black uppercase tracking-[0.2em] text-gradient">Area Pulse</h3>
         </div>
-        {useRealtimeModel && (
-          <Badge variant="default" className="rounded-full px-2 py-0.5 text-[10px]">Realtime</Badge>
-        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -355,18 +397,6 @@ export default function MapOverview() {
       {/* Quick bar */}
       <div className="absolute top-4 left-4 right-4 z-20 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between pointer-events-none">
         <div className="flex flex-wrap gap-2 pointer-events-auto">
-          <Button
-            variant={useRealtimeModel ? "default" : "outline"}
-            size="sm"
-            className="rounded-full px-4"
-            onClick={() => {
-              setUseRealtimeModel(!useRealtimeModel);
-              toast.success(useRealtimeModel ? "Historical data" : "Realtime ML enabled", { duration: 2000 });
-            }}
-          >
-            <Cpu className="mr-2 h-4 w-4" />
-            {useRealtimeModel ? "Realtime" : "Historical"}
-          </Button>
           <Button
             variant={mockMode ? "default" : "outline"}
             size="sm"
@@ -439,7 +469,7 @@ export default function MapOverview() {
           <div className="absolute top-24 left-1/2 -translate-x-1/2 z-10">
             <div className="glass-panel px-6 py-4 rounded-2xl border-dashed border-white/20 text-center max-w-sm">
               <div className="text-sm font-semibold">No risk data visible for this view.</div>
-              <p className="text-xs text-muted-foreground mt-1">Move the map or switch to historical mode to load more coverage.</p>
+              <p className="text-xs text-muted-foreground mt-1">Move the map to load more coverage.</p>
             </div>
           </div>
         )}

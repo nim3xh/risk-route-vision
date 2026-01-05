@@ -57,6 +57,10 @@ export interface SegmentFeatureProps {
   wind_speed?: number;
   temperature?: number;
   is_realtime?: boolean;
+  // Blended model support
+  risk_historical?: number;
+  risk_realtime?: number;
+  model_source?: "historical" | "realtime" | "max" | "blended";
 }
 
 export type SegmentFeature = {
