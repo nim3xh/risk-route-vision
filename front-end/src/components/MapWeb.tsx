@@ -81,7 +81,7 @@ export function MapWeb({ center, segments, routeLine, onSegmentClick, onCenterCh
   }, []);
 
   const handleMapLoad = useCallback(() => {
-    console.log("Map loaded successfully with style:", mapStyle);
+
     setIsMapLoaded(true);
     setMapError(null);
   }, [mapStyle]);

@@ -16,7 +16,7 @@ export function MapTest() {
     if (!mapContainer.current) return;
     if (map.current) return; // Initialize map only once
 
-    console.log("Initializing test map...");
+
 
     try {
       map.current = new maplibregl.Map({
@@ -27,7 +27,7 @@ export function MapTest() {
       });
 
       map.current.on("load", () => {
-        console.log("Test map loaded successfully!");
+
         setLoaded(true);
         setError(null);
       });

@@ -1,0 +1,137 @@
+[
+  {
+    "Vehicle": "Bus",
+    "n_test": 5,
+    "threshold_used": 0.3983371126228269,
+    "accuracy": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+  },
+  {
+    "Vehicle": "Bus / Motor Cycle",
+    "n_test": 2,
+    "threshold_used": 0.3507180650037793,
+    "accuracy": 0.5,
+    "precision": 1.0,
+    "recall": 0.5,
+    "f1": 0.6666666666666666
+  },
+  {
+    "Vehicle": "Bus / Three Wheeler",
+    "n_test": 4,
+    "threshold_used": 0.3507180650037793,
+    "accuracy": 0.0,
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1": 0.0
+  },
+  {
+    "Vehicle": "Bus / Van",
+    "n_test": 2,
+    "threshold_used": 0.3507180650037793,
+    "accuracy": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+  },
+  {
+    "Vehicle": "Car",
+    "n_test": 7,
+    "threshold_used": 0.3507180650037793,
+    "accuracy": 0.42857142857142855,
+    "precision": 1.0,
+    "recall": 0.42857142857142855,
+    "f1": 0.6
+  },
+  {
+    "Vehicle": "Car / Three Wheeler",
+    "n_test": 1,
+    "threshold_used": 0.3507180650037793,
+    "accuracy": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+  },
+  {
+    "Vehicle": "Lorry",
+    "n_test": 6,
+    "threshold_used": 0.3507180650037793,
+    "accuracy": 0.6666666666666666,
+    "precision": 1.0,
+    "recall": 0.6,
+    "f1": 0.75
+  },
+  {
+    "Vehicle": "Lorry / Three Wheeler",
+    "n_test": 4,
+    "threshold_used": 0.3507180650037793,
+    "accuracy": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+  },
+  {
+    "Vehicle": "Motor Cycle",
+    "n_test": 8,
+    "threshold_used": 0.3983371126228269,
+    "accuracy": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+  },
+  {
+    "Vehicle": "Three Wheeer",
+    "n_test": 1,
+    "threshold_used": 0.3507180650037793,
+    "accuracy": 0.0,
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1": 0.0
+  },
+  {
+    "Vehicle": "Three Wheel",
+    "n_test": 1,
+    "threshold_used": 0.3507180650037793,
+    "accuracy": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+  },
+  {
+    "Vehicle": "Three Wheeler",
+    "n_test": 14,
+    "threshold_used": 0.3507180650037793,
+    "accuracy": 0.8571428571428571,
+    "precision": 1.0,
+    "recall": 0.8461538461538461,
+    "f1": 0.9166666666666666
+  },
+  {
+    "Vehicle": "Three Wheeler / Lorry",
+    "n_test": 1,
+    "threshold_used": 0.3507180650037793,
+    "accuracy": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+  },
+  {
+    "Vehicle": "Three Wheeler / Motor Cycle",
+    "n_test": 1,
+    "threshold_used": 0.3507180650037793,
+    "accuracy": 0.0,
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1": 0.0
+  },
+  {
+    "Vehicle": "Van",
+    "n_test": 6,
+    "threshold_used": 0.3983371126228269,
+    "accuracy": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+  }
+]

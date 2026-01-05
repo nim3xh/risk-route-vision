@@ -1,0 +1,10 @@
+{
+  "threshold_mode": "per-vehicle",
+  "global_threshold": 0.3507180650037793,
+  "strategy": "median",
+  "q": 0.5,
+  "accuracy": 0.7619047619047619,
+  "precision": 0.9,
+  "recall": 0.7659574468085106,
+  "f1": 0.8275862068965517
+}

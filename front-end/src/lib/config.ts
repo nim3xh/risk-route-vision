@@ -6,14 +6,14 @@ export const config = {
   timezone: import.meta.env.VITE_TIMEZONE || "Asia/Colombo",
   useMockApi: import.meta.env.VITE_USE_MOCK_API === "true" || !import.meta.env.VITE_API_BASE,
   
-  // Default map center: 6.9893° N, 80.4927° E
+  // Prediction area centered at 6.9893° N, 80.4927° E
   domain: {
     center: { lat: 6.9893, lng: 80.4927 },
     bounds: {
-      minLon: 80.43,
-      minLat: 6.94,
-      maxLon: 80.55,
-      maxLat: 7.03,
+      minLon: 80.4827,  // 80.4927 - 0.01
+      minLat: 6.9793,   // 6.9893 - 0.01
+      maxLon: 80.5027,  // 80.4927 + 0.01
+      maxLat: 6.9993,   // 6.9893 + 0.01
     },
   },
 } as const;

@@ -5,6 +5,7 @@ import {
   TopSpot,
   Vehicle,
   BoundingBox,
+  Weather,
 } from "@/types";
 import { config } from "@/lib/config";
 import { httpAdapter } from "./httpAdapter";
@@ -51,6 +52,8 @@ class RiskApiClient {
   ): Promise<{
     overall: number;
     segmentScores: number[];
+    segmentCauses: string[];
+    rateScores: number[];
     risk_0_100: number;
     explain: Record<string, number>;
   }> {
@@ -65,6 +68,8 @@ class RiskApiClient {
       return {
         overall: mockResult.rate_pred,
         segmentScores: coordinates.map(() => mockResult.rate_pred),
+        segmentCauses: coordinates.map(() => mockResult.top_cause),
+        rateScores: coordinates.map(() => mockResult.rate_pred),
         risk_0_100: mockResult.risk_0_100,
         explain: {
           curvature: mockResult.components.cause_component,
@@ -79,12 +84,26 @@ class RiskApiClient {
   async getSegmentsToday(
     bbox?: BoundingBox,
     hour?: number,
-    vehicle?: Vehicle
+    vehicle?: Vehicle,
+    weather?: Weather
   ): Promise<SegmentsTodayResponse> {
     if (this.useMock) {
       return mockGetSegmentsToday(bbox, hour, vehicle);
     }
-    return httpAdapter.getSegmentsToday(bbox, hour, vehicle);
+    return httpAdapter.getSegmentsToday(bbox, hour, vehicle, weather);
+  }
+
+  async getSegmentsRealtime(
+    bbox?: BoundingBox,
+    hour?: number,
+    vehicle?: Vehicle,
+    weather?: Weather
+  ): Promise<SegmentsTodayResponse> {
+    if (this.useMock) {
+      // In mock mode, return same as historical for now
+      return mockGetSegmentsToday(bbox, hour, vehicle);
+    }
+    return httpAdapter.getSegmentsRealtime(bbox, hour, vehicle, weather);
   }
 
   async getTopSpots(vehicle?: Vehicle, limit: number = 10): Promise<TopSpot[]> {
@@ -92,6 +111,67 @@ class RiskApiClient {
       return mockGetTopSpots(vehicle, limit);
     }
     return httpAdapter.getTopSpots(vehicle, limit);
+  }
+
+  async getWeather(lat: number, lon: number): Promise<Weather> {
+    if (this.useMock) {
+      return {
+        temperature_c: 28,
+        humidity_pct: 75,
+        precip_mm: 0,
+        wind_kmh: 12,
+        is_wet: 0,
+      };
+    }
+    return httpAdapter.getWeather(lat, lon);
+  }
+
+  // Analytics endpoints
+  async compareRoutes(
+    routes: Array<{ name: string; coordinates: [number, number][] }>,
+    vehicle: Vehicle = "CAR",
+    hour?: number
+  ): Promise<any> {
+    return httpAdapter.compareRoutes(routes, vehicle, hour);
+  }
+
+  async getRiskDistribution(
+    bbox?: string,
+    vehicle?: Vehicle,
+    hour?: number
+  ): Promise<any> {
+    return httpAdapter.getRiskDistribution(bbox, vehicle, hour);
+  }
+
+  async getVehicleComparison(
+    bbox?: string,
+    hour?: number
+  ): Promise<any> {
+    return httpAdapter.getVehicleComparison(bbox, hour);
+  }
+
+  async getHourlyTrends(
+    bbox?: string,
+    vehicle: Vehicle = "CAR"
+  ): Promise<any> {
+    return httpAdapter.getHourlyTrends(bbox, vehicle);
+  }
+
+  async getRouteDetails(
+    coordinates: [number, number][],
+    vehicle: Vehicle = "CAR",
+    hour?: number
+  ): Promise<any> {
+    return httpAdapter.getRouteDetails(coordinates, vehicle, hour);
+  }
+
+  async getRiskFactors(
+    lat: number,
+    lon: number,
+    vehicle: Vehicle = "CAR",
+    hour?: number
+  ): Promise<any> {
+    return httpAdapter.getRiskFactors(lat, lon, vehicle, hour);
   }
 }
 

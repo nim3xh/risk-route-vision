@@ -7,7 +7,9 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import MapOverview from "./pages/MapOverview";
 import LiveDrive from "./pages/LiveDrive";
 import RouteLookAhead from "./pages/RouteLookAhead";
+import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
+import { MainLayout } from "./components/MainLayout";
 
 const queryClient = new QueryClient();
 
@@ -17,14 +19,16 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<MapOverview />} />
-            <Route path="/live" element={<LiveDrive />} />
-            <Route path="/route" element={<RouteLookAhead />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <MainLayout>
+            <Routes>
+              <Route path="/" element={<MapOverview />} />
+              <Route path="/live" element={<LiveDrive />} />
+              <Route path="/route" element={<RouteLookAhead />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </MainLayout>
         </BrowserRouter>
       </TooltipProvider>
     </ThemeProvider>

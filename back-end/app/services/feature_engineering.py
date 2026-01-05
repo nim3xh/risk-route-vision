@@ -1,5 +1,5 @@
 from typing import List, Tuple, Dict
-from .geometry import curvature_estimate
+from .geometry import curvature_estimate, per_point_curvature
 Coord = Tuple[float, float]
 
 def build_features(coords: List[Coord], weather: Dict, vehicle: str) -> Dict:
@@ -7,7 +7,8 @@ def build_features(coords: List[Coord], weather: Dict, vehicle: str) -> Dict:
     Build features for risk prediction compatible with XGBoost model.
     Includes weather data, curvature, and vehicle type.
     """
-    curv = curvature_estimate(coords)
+    # Calculate curvature for each coordinate in the polyline
+    curvatures = per_point_curvature(coords)
     
     # Weather features (match training data format)
     is_rain = weather.get("is_rain", False)
@@ -25,7 +26,7 @@ def build_features(coords: List[Coord], weather: Dict, vehicle: str) -> Dict:
     
     return {
         # Core features for XGBoost model
-        "curvature": curv,
+        "curvature": curvatures,
         "temperature": temp,
         "humidity": humidity,
         "precipitation": precipitation,

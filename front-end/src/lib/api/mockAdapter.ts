@@ -30,7 +30,7 @@ function hashCoords(lat: number, lon: number): number {
 export async function mockScore(req: ScoreRequest): Promise<ScoreResponse> {
   const seed = hashCoords(req.lat, req.lon);
   const baseRisk = seededRandom(seed) * 100;
-  
+
   // Vehicle multipliers
   const vehicleMultipliers: Record<Vehicle, number> = {
     "Car": 1.0,
@@ -40,14 +40,14 @@ export async function mockScore(req: ScoreRequest): Promise<ScoreResponse> {
     "Van": 0.95,
     "Lorry": 0.90,
   };
-  
+
   const vehicleRisk = baseRisk * vehicleMultipliers[req.vehicle];
-  
+
   // Wet conditions increase risk
   const wetMultiplier = req.is_wet === 1 ? 1.25 : 1.0;
-  
+
   const finalRisk = Math.min(100, Math.max(0, vehicleRisk * wetMultiplier));
-  
+
   const causes = [
     "Sharp curve with poor visibility",
     "Steep descent",
@@ -57,9 +57,9 @@ export async function mockScore(req: ScoreRequest): Promise<ScoreResponse> {
     "Blind corner",
     "School zone during peak hours",
   ];
-  
+
   const topCause = causes[Math.floor(seededRandom(seed + 1) * causes.length)];
-  
+
   return {
     risk_0_100: Math.round(finalRisk),
     top_cause: topCause,
@@ -70,6 +70,13 @@ export async function mockScore(req: ScoreRequest): Promise<ScoreResponse> {
       rate_component: seededRandom(seed + 5) * 0.3,
       S_vehicle: vehicleMultipliers[req.vehicle],
       W_weather: wetMultiplier,
+    },
+    weather: {
+      temperature_c: req.temperature_c ?? 30,
+      humidity_pct: req.humidity_pct ?? 75,
+      precip_mm: req.precip_mm ?? 0,
+      wind_kmh: req.wind_kmh ?? 10,
+      is_wet: req.is_wet ?? 0,
     },
   };
 }
@@ -83,12 +90,11 @@ export async function mockGetSegmentsToday(
   vehicle?: Vehicle
 ): Promise<SegmentsTodayResponse> {
   const data = segmentsTodayData as SegmentsTodayResponse;
-  
-  console.log("📂 mockGetSegmentsToday called with:", { bbox, hour, vehicle });
-  console.log("📊 Total segments in fixtures:", data.features.length);
-  
+
+
+
   let filtered = data.features;
-  
+
   // Filter by bbox
   if (bbox) {
     filtered = filtered.filter((f) => {
@@ -96,9 +102,9 @@ export async function mockGetSegmentsToday(
       const [lon, lat] = coords;
       return isPointInBbox(lat, lon, bbox);
     });
-    console.log("📍 After bbox filter:", filtered.length);
+
   }
-  
+
   // Filter by hour - Show all hours for now (you can adjust the slider to see different times)
   // Keeping this disabled so you can see all risk areas regardless of time
   // if (hour !== undefined) {
@@ -108,15 +114,15 @@ export async function mockGetSegmentsToday(
   //   });
   //   console.log("⏰ After hour filter:", filtered.length);
   // }
-  
+
   // Filter by vehicle type - ENABLED to show vehicle-specific risks
   if (vehicle) {
     const beforeFilter = filtered.length;
     filtered = filtered.filter((f) => f.properties.vehicle === vehicle);
-    console.log(`🚗 Vehicle filter (${vehicle}): ${beforeFilter} → ${filtered.length} segments`);
+
   }
-  
-  console.log("✅ Returning segments:", filtered.length);
+
+
   return {
     type: "FeatureCollection",
     features: filtered,
@@ -131,7 +137,7 @@ export async function mockGetTopSpots(
   limit: number = 10
 ): Promise<TopSpot[]> {
   const data = segmentsTodayData as SegmentsTodayResponse;
-  
+
   const spots = data.features
     .filter((f) => !vehicle || f.properties.vehicle === vehicle)
     .map((f) => {
@@ -141,14 +147,15 @@ export async function mockGetTopSpots(
         lat: coords[1],
         lon: coords[0],
         risk_0_100: f.properties.risk_0_100,
+        rate_pred: f.properties.rate_pred,
         vehicle: f.properties.vehicle,
         hour: f.properties.hour,
         top_cause: f.properties.top_cause,
       };
     });
-  
+
   // Sort by risk descending
   spots.sort((a, b) => b.risk_0_100 - a.risk_0_100);
-  
+
   return spots.slice(0, limit);
 }

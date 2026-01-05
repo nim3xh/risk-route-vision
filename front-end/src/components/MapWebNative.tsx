@@ -1,21 +1,24 @@
 import { useRef, useEffect, useMemo, useState, useCallback } from "react";
 import maplibregl from "maplibre-gl";
 import { SegmentFeature } from "@/types";
-import { riskToColor } from "@/lib/utils/colors";
+import { riskToColor, riskToHeatmapColor } from "@/lib/utils/colors";
+import { generateInterpolateExpression } from "@/lib/utils/colorScale";
 import { getMapStyleUrl } from "@/lib/config";
 import { useUiStore, MapStyle } from "@/store/useUiStore";
 import { LocationButton } from "@/components/LocationButton";
 import { MapAttribution } from "@/components/MapAttribution";
+import type { VisualizationMode } from "@/components/RiskVisualizationToggle";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 interface MapWebProps {
   center: { lat: number; lng: number };
   segments: SegmentFeature[];
+  visualizationMode?: VisualizationMode;
   onSegmentClick?: (segment: SegmentFeature) => void;
   onCenterChange?: (center: { lat: number; lng: number }) => void;
 }
 
-export function MapWebNative({ center, segments, onSegmentClick, onCenterChange }: MapWebProps) {
+export function MapWebNative({ center, segments, visualizationMode = "labels", onSegmentClick, onCenterChange }: MapWebProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const userLocationMarker = useRef<maplibregl.Marker | null>(null);
@@ -39,12 +42,38 @@ export function MapWebNative({ center, segments, onSegmentClick, onCenterChange 
       type: "FeatureCollection" as const,
       features: segments.map((segment) => {
         const color = riskToColor(segment.properties.risk_0_100);
+        
+        // Calculate center point for labels/circles
+        let centerPoint = null;
+        if (segment.geometry.type === "Polygon" && Array.isArray(segment.geometry.coordinates)) {
+          // Get center of polygon
+          const ring = segment.geometry.coordinates[0];
+          if (ring && ring.length > 0) {
+            const lons = ring.slice(0, -1).map((p: number[]) => p[0]);
+            const lats = ring.slice(0, -1).map((p: number[]) => p[1]);
+            centerPoint = [
+              lons.reduce((a: number, b: number) => a + b, 0) / lons.length,
+              lats.reduce((a: number, b: number) => a + b, 0) / lats.length
+            ];
+          }
+        } else if (segment.geometry.type === "LineString" && Array.isArray(segment.geometry.coordinates)) {
+          const coords = segment.geometry.coordinates;
+          if (coords.length > 0) {
+            const midIdx = Math.floor(coords.length / 2);
+            centerPoint = coords[midIdx];
+          }
+        } else if (segment.geometry.type === "Point" && Array.isArray(segment.geometry.coordinates)) {
+          centerPoint = segment.geometry.coordinates;
+        }
+        
         return {
           type: "Feature" as const,
+          id: segment.properties.segment_id,
           geometry: segment.geometry,
           properties: {
             ...segment.properties,
             color,
+            centerPoint,
           },
         };
       }),
@@ -75,114 +104,225 @@ export function MapWebNative({ center, segments, onSegmentClick, onCenterChange 
     }
 
     // Remove existing layers and source if they exist
-    if (mapInstance.getLayer("segments-labels")) {
-      mapInstance.removeLayer("segments-labels");
-    }
-    if (mapInstance.getLayer("segments-circles")) {
-      mapInstance.removeLayer("segments-circles");
-    }
+    const layerIds = ["segments-fill", "segments-outline", "segments-lines", "segments-circles", "segments-graduated", "segments-labels"];
+    layerIds.forEach(id => {
+      if (mapInstance.getLayer(id)) {
+        mapInstance.removeLayer(id);
+      }
+    });
     if (mapInstance.getSource("segments")) {
       mapInstance.removeSource("segments");
     }
+    if (mapInstance.getSource("segment-centers")) {
+      mapInstance.removeSource("segment-centers");
+    }
 
-    // Add source
+    // Add line segments source
     mapInstance.addSource("segments", {
       type: "geojson",
       data: geojsonData as GeoJSON.FeatureCollection,
     });
-
-    // Add circle layer
-    mapInstance.addLayer({
-      id: "segments-circles",
-      type: "circle",
-      source: "segments",
-      paint: {
-        "circle-radius": [
-          "interpolate",
-          ["linear"],
-          ["get", "risk_0_100"],
-          0, 30,
-          50, 50,
-          100, 80
-        ],
-        "circle-color": ["get", "color"],
-        "circle-opacity": [
-          "interpolate",
-          ["linear"],
-          ["get", "risk_0_100"],
-          0, 0.3,
-          50, 0.5,
-          100, 0.7
-        ],
-        "circle-stroke-color": ["get", "color"],
-        "circle-stroke-width": 3,
-        "circle-stroke-opacity": 0.9,
-      },
+    
+    // Create center points source for circles
+    const centerPointsData = {
+      type: "FeatureCollection" as const,
+      features: geojsonData.features
+        .filter((f: any) => f.properties.centerPoint)
+        .map((f: any) => ({
+          type: "Feature" as const,
+          id: f.id,
+          geometry: {
+            type: "Point" as const,
+            coordinates: f.properties.centerPoint
+          },
+          properties: f.properties
+        }))
+    };
+    
+    mapInstance.addSource("segment-centers", {
+      type: "geojson",
+      data: centerPointsData as GeoJSON.FeatureCollection,
     });
 
-    // Add labels layer
-    mapInstance.addLayer({
-      id: "segments-labels",
-      type: "symbol",
-      source: "segments",
-      layout: {
-        "text-field": ["to-string", ["get", "risk_0_100"]],
-        "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
-        "text-size": 14,
-        "text-offset": [0, 0],
-        "text-anchor": "center",
-      },
-      paint: {
-        "text-color": "#ffffff",
-        "text-halo-color": "#000000",
-        "text-halo-width": 2,
-      },
-    });
-
-    // Add click handlers
-    mapInstance.on("click", "segments-circles", (e) => {
-      if (!e.features || !e.features[0] || !onSegmentClick) return;
+    // Add visualization based on mode - using filled polygons for area risk zones
+    if (visualizationMode === "circles") {
+      // Filled polygons with color-coded risk
+      mapInstance.addLayer({
+        id: "segments-fill",
+        type: "fill",
+        source: "segments",
+        paint: {
+          "fill-color": ["get", "color"],
+          "fill-opacity": 0.6
+        }
+      });
       
-      const feature = e.features[0];
-      const segment = segments.find(
-        (s) => s.properties.segment_id === feature.properties.segment_id
-      );
+      mapInstance.addLayer({
+        id: "segments-outline",
+        type: "line",
+        source: "segments",
+        paint: {
+          "line-color": "#ffffff",
+          "line-width": 1,
+          "line-opacity": 0.3
+        }
+      });
       
-      if (segment) {
-        onSegmentClick(segment);
-      }
+      mapInstance.addLayer({
+        id: "segments-circles",
+        type: "circle",
+        source: "segment-centers",
+        paint: {
+          "circle-radius": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            10, 6,
+            13, 9,
+            15, 12
+          ],
+          "circle-color": ["get", "color"],
+          "circle-opacity": 1,
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "#ffffff"
+        }
+      });
+    } else if (visualizationMode === "graduated") {
+      // Filled polygons with opacity based on risk
+      mapInstance.addLayer({
+        id: "segments-fill",
+        type: "fill",
+        source: "segments",
+        paint: {
+          "fill-color": ["get", "color"],
+          "fill-opacity": [
+            "interpolate",
+            ["linear"],
+            ["get", "risk_0_100"],
+            0, 0.3,
+            40, 0.5,
+            70, 0.7,
+            100, 0.85
+          ]
+        }
+      });
+      
+      mapInstance.addLayer({
+        id: "segments-outline",
+        type: "line",
+        source: "segments",
+        paint: {
+          "line-color": ["get", "color"],
+          "line-width": [
+            "interpolate",
+            ["linear"],
+            ["get", "risk_0_100"],
+            0, 1,
+            70, 2,
+            100, 3
+          ],
+          "line-opacity": 0.6
+        }
+      });
+    } else if (visualizationMode === "labels") {
+      // Filled polygons with risk labels
+      mapInstance.addLayer({
+        id: "segments-fill",
+        type: "fill",
+        source: "segments",
+        paint: {
+          "fill-color": ["get", "color"],
+          "fill-opacity": 0.65
+        }
+      });
+      
+      mapInstance.addLayer({
+        id: "segments-outline",
+        type: "line",
+        source: "segments",
+        paint: {
+          "line-color": "#ffffff",
+          "line-width": 1.5,
+          "line-opacity": 0.4
+        }
+      });
+
+      mapInstance.addLayer({
+        id: "segments-labels",
+        type: "symbol",
+        source: "segment-centers",
+        layout: {
+          "text-field": ["get", "risk_0_100"],
+          "text-font": ["Open Sans Bold"],
+          "text-size": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            10, 10,
+            13, 13,
+            15, 16
+          ]
+        },
+        paint: {
+          "text-color": "#ffffff",
+          "text-halo-color": "#000000",
+          "text-halo-width": 2
+        }
+      });
+    }
+
+    // Add click handlers for fill layers and circles
+    const clickLayerIds = visualizationMode === "labels" ? ["segments-fill", "segments-labels"] : 
+                         visualizationMode === "graduated" ? ["segments-fill", "segments-outline"] : ["segments-fill", "segments-circles"];
+
+    // Add click handlers for all interactive layers
+    clickLayerIds.forEach(layerId => {
+      mapInstance.on("click", layerId, (e) => {
+        if (!e.features || !e.features[0] || !onSegmentClick) return;
+        
+        const feature = e.features[0];
+        const segment = segments.find(
+          (s) => s.properties.segment_id === feature.properties.segment_id
+        );
+        
+        if (segment) {
+          onSegmentClick(segment);
+        }
+      });
+
+      // Cursor change on hover
+      mapInstance.on("mouseenter", layerId, () => {
+        mapInstance.getCanvas().style.cursor = "pointer";
+      });
+
+      mapInstance.on("mouseleave", layerId, () => {
+        mapInstance.getCanvas().style.cursor = "";
+      });
     });
 
-    // Cursor change on hover
-    mapInstance.on("mouseenter", "segments-circles", () => {
-      mapInstance.getCanvas().style.cursor = "pointer";
-    });
-
-    mapInstance.on("mouseleave", "segments-circles", () => {
-      mapInstance.getCanvas().style.cursor = "";
-    });
-
-    // Add popup on hover
+    // Add popup on hover - only for the first layer to avoid duplicates
     const popup = new maplibregl.Popup({
       closeButton: false,
       closeOnClick: false,
     });
 
-    mapInstance.on("mouseenter", "segments-circles", (e) => {
+    mapInstance.on("mouseenter", clickLayerIds[0], (e) => {
       if (!e.features || !e.features[0]) return;
       
       const feature = e.features[0];
       const risk = feature.properties.risk_0_100;
       const cause = feature.properties.top_cause || "Unknown";
+      const segmentId = feature.properties.segment_id || "N/A";
       
       popup
         .setLngLat(e.lngLat)
         .setHTML(`
-          <div style="padding: 8px; min-width: 200px;">
-            <strong style="font-size: 16px; color: ${feature.properties.color}">
+          <div style="padding: 10px; min-width: 220px; background: rgba(0,0,0,0.9); border-radius: 8px;">
+            <div style="font-size: 10px; color: #888; margin-bottom: 4px;">${segmentId}</div>
+            <strong style="font-size: 18px; color: ${feature.properties.color}; display: block; margin-bottom: 6px;">
               Risk: ${risk}/100
             </strong>
-            <p style="margin: 5px 0 0 0; font-size: 12px; color: #666;">
+            <p style="margin: 0; font-size: 12px; color: #ccc; line-height: 1.4;">
               ${cause}
             </p>
           </div>
@@ -190,10 +330,10 @@ export function MapWebNative({ center, segments, onSegmentClick, onCenterChange 
         .addTo(mapInstance);
     });
 
-    mapInstance.on("mouseleave", "segments-circles", () => {
+    mapInstance.on("mouseleave", clickLayerIds[0], () => {
       popup.remove();
     });
-  }, [geojsonData, segments, onSegmentClick]);
+  }, [geojsonData, segments, onSegmentClick, visualizationMode]);
 
   // Note: User location is only fetched when clicking the location button
   // No auto-location detection on load to keep focus on default area

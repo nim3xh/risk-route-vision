@@ -59,6 +59,74 @@ export function samplePolyline(
 }
 
 /**
+ * Sample a fixed number of points evenly distributed along a polyline
+ */
+export function samplePolylineByCount(
+  coordinates: number[][],
+  count: number = 50
+): Array<{ lat: number; lon: number }> {
+  if (coordinates.length < 2) return [];
+  if (count < 2) count = 2;
+
+  // Calculate total route length
+  let totalLength = 0;
+  const segmentLengths: number[] = [];
+  
+  for (let i = 0; i < coordinates.length - 1; i++) {
+    const [lon1, lat1] = coordinates[i];
+    const [lon2, lat2] = coordinates[i + 1];
+    const length = haversineDistance(lat1, lon1, lat2, lon2);
+    segmentLengths.push(length);
+    totalLength += length;
+  }
+
+  if (totalLength === 0) {
+    return [{ lat: coordinates[0][1], lon: coordinates[0][0] }];
+  }
+
+  const points: Array<{ lat: number; lon: number }> = [];
+  const interval = totalLength / (count - 1);
+  
+  let targetDistance = 0;
+  let currentDistance = 0;
+  let currentSegmentIndex = 0;
+  
+  // Add first point
+  points.push({ lat: coordinates[0][1], lon: coordinates[0][0] });
+  
+  for (let i = 1; i < count - 1; i++) {
+    targetDistance = i * interval;
+    
+    // Find the segment containing this target distance
+    while (currentSegmentIndex < segmentLengths.length && 
+           currentDistance + segmentLengths[currentSegmentIndex] < targetDistance) {
+      currentDistance += segmentLengths[currentSegmentIndex];
+      currentSegmentIndex++;
+    }
+    
+    if (currentSegmentIndex >= segmentLengths.length) break;
+    
+    // Interpolate within the current segment
+    const remainingDistance = targetDistance - currentDistance;
+    const fraction = remainingDistance / segmentLengths[currentSegmentIndex];
+    
+    const [lon1, lat1] = coordinates[currentSegmentIndex];
+    const [lon2, lat2] = coordinates[currentSegmentIndex + 1];
+    
+    const lat = lat1 + (lat2 - lat1) * fraction;
+    const lon = lon1 + (lon2 - lon1) * fraction;
+    
+    points.push({ lat, lon });
+  }
+  
+  // Add last point
+  const lastCoord = coordinates[coordinates.length - 1];
+  points.push({ lat: lastCoord[1], lon: lastCoord[0] });
+  
+  return points;
+}
+
+/**
  * Interpolate a point between two coordinates
  */
 export function interpolatePoint(

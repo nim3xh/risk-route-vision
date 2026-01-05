@@ -1,0 +1,13 @@
+{
+  "dataset_path": "/content/final_dataset.csv",
+  "n_train": 252,
+  "n_test": 63,
+  "target": "SPI_smoothed",
+  "model": "XGBRegressor",
+  "tuned": true,
+  "test_metrics": {
+    "r2": 0.6522609251847182,
+    "mae": 0.009836150481475937,
+    "rmse": 0.01497865146762254
+  }
+}

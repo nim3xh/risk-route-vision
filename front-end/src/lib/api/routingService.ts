@@ -28,7 +28,7 @@ async function getRouteFromOSRM(
     // OSRM demo server - free, no API key needed
     const url = `https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson&steps=true`;
     
-    console.log('🚗 Fetching route from OSRM (free routing service)...');
+
     
     const response = await fetch(url);
 
@@ -45,7 +45,7 @@ async function getRouteFromOSRM(
     const route = data.routes[0];
     const geometry = route.geometry;
     
-    console.log(`✅ Route found via OSRM: ${(route.distance / 1000).toFixed(2)} km`);
+
     
     return {
       coordinates: geometry.coordinates,
@@ -134,7 +134,7 @@ export async function getRoute(
   const ORS_API_KEY = import.meta.env.VITE_ORS_API_KEY;
   if (ORS_API_KEY) {
     try {
-      console.log('🔑 Trying OpenRouteService with API key...');
+
       return await getRouteFromORS(from, to, profile);
     } catch (error) {
       console.warn('ORS routing failed:', error);
@@ -209,19 +209,13 @@ export async function geocodeAddress(
   try {
     const params = new URLSearchParams({
       q: query,
-      format: 'json',
       countrycodes: countryCode,
       limit: '5',
-      addressdetails: '1',
     });
 
+    // Use backend proxy to avoid CORS issues
     const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?${params}`,
-      {
-        headers: {
-          'User-Agent': 'DriverAlert/1.0',
-        },
-      }
+      `http://localhost:8080/api/v1/geocoding/search?${params}`
     );
 
     if (!response.ok) {
